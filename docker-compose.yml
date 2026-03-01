@@ -1,0 +1,9 @@
+services:
+  surveillance-system:
+    build: .
+    container_name: surveillance-system
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app
+    command: python3 main.py

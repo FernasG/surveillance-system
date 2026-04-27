@@ -1,4 +1,5 @@
-import os
+import os, torch, clip
+
 
 def main():
     print("Hello from Docker!")

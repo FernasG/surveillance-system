@@ -13,5 +13,5 @@ down:
 logs:
 	docker compose logs -f
 
-shell:
-	docker compose exec app sh
+sh:
+	docker compose exec surveillance-system bash

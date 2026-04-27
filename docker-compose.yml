@@ -1,9 +1,31 @@
+networks:
+  guard-network:
+    name: guard-network
+    driver: bridge
+
 services:
-  surveillance-system:
-    build: .
-    container_name: surveillance-system
+  pi-guard:
+    image: pi-guard:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pi-guard
     env_file:
       - .env
+    environment:
+      - TZ=America/Sao_Paulo
     volumes:
-      - ./app:/app
-    command: python3 main.py
+      - ${PWD}:/app
+    depends_on:
+      - chromadb
+    networks:
+      - guard-network
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    ports:
+      - 8000:8000
+    restart: unless-stopped
+    networks:
+      - guard-network

@@ -1,17 +1,29 @@
-FROM python:3.12-slim
+FROM python:3.10.13-slim
 
-# Prevent python from writing pyc files
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# Install system deps only if needed
-# RUN apt-get update && apt-get install -y gcc
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    libglib2.0-0 \
+    libavcodec-dev \
+    libswscale-dev \
+    libgl1-mesa-glx \
+    libavformat-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt /app/
+
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir git+https://github.com/openai/CLIP.git
 
 COPY app/ .
 
-CMD ["python3", "main.py"]
+# CMD ["python3", "app/processor.py"]
+
+CMD ["tail", "-f", "/dev/null"]

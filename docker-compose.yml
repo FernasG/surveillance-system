@@ -15,7 +15,9 @@ services:
     environment:
       - TZ=America/Sao_Paulo
     volumes:
-      - ${PWD}:/app
+      - ./guard:/app/guard
+      - ./videos:/app/videos
+      - ./.env:/app/.env
     depends_on:
       - chromadb
     networks:

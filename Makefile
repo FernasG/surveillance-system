@@ -14,4 +14,4 @@ logs:
 	docker compose logs -f
 
 sh:
-	docker compose exec surveillance-system bash
+	docker compose exec pi-guard bash

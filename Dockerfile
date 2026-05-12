@@ -18,12 +18,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt /app/
 
 RUN pip install --upgrade pip \
-    && pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir git+https://github.com/openai/CLIP.git
 
-COPY app/ .
+COPY guard/ ./guard/
 
-# CMD ["python3", "app/processor.py"]
+# CMD ["python3", "-m", "app.main"]
 
 CMD ["tail", "-f", "/dev/null"]

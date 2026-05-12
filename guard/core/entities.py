@@ -1,5 +1,6 @@
 import numpy as np
 from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
 
 @dataclass
 class VideoFrame:
@@ -11,3 +12,6 @@ class VideoFrame:
 class VectorEmbedding:
     embeddings: np.ndarray
     metadata: dict
+
+class Query(BaseModel):
+    text: str = Field(min_length=3)

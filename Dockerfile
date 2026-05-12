@@ -23,6 +23,6 @@ RUN pip install --upgrade pip \
 
 COPY guard/ ./guard/
 
-# CMD ["python3", "-m", "app.main"]
+# CMD ["uvicorn guard.api.server:app --reload"]
 
 CMD ["tail", "-f", "/dev/null"]

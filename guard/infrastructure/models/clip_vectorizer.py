@@ -33,3 +33,26 @@ class CLIPVectorizer(VectorizerInterface):
         embeddings = embeddings.cpu().numpy().flatten()
 
         return embeddings
+    
+    def encode_batch_images(self, frames: list[VideoFrame]) -> list[VectorEmbedding]:
+        if not frames:
+            return []
+        
+        processed_images = []
+
+        for frame in frames:
+            img = Image.fromarray(cv2.cvtColor(frame.data, cv2.COLOR_BGR2RGB))
+            processed_images.append(self.preprocess(img))
+
+        image_input = torch.stack(processed_images).to(self.device)
+
+        with torch.no_grad():
+            batch_embeddings = self.model.encode_image(image_input).float()
+            batch_embeddings /= batch_embeddings.norm(dim=-1, keepdim=True)
+
+        embeddings_numpy = batch_embeddings.cpu().numpy()
+
+        return [
+            VectorEmbedding(embeddings=vector, metadata={"data": 1}) 
+            for vector in embeddings_numpy
+        ]

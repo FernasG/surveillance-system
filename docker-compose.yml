@@ -29,5 +29,7 @@ services:
     ports:
       - 8000:8000
     restart: unless-stopped
+    volumes:
+      - ./chroma_data:/chroma/chroma
     networks:
       - guard-network

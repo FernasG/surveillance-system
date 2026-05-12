@@ -18,7 +18,19 @@ class VectorizerInterface(ABC):
     def encode_text(self, query_text: str) -> np.ndarray:
         pass
 
+    @abstractmethod
+    def encode_batch_images(self, frames: list[VideoFrame]) -> list[VectorEmbedding]:
+        pass
+
 class VectorStoreInterface(ABC):
     @abstractmethod
-    def save(self, embedding: VectorEmbedding) -> bool:
+    def save(self, embedding: VectorEmbedding, doc_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    def save_batch(self, embeddings: list[VectorEmbedding], doc_id: str) -> bool:
+        pass
+
+    @abstractmethod
+    def search(self, query_vector: list[float], top_k: int = 5) -> list[dict]:
         pass

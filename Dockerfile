@@ -23,6 +23,6 @@ RUN pip install --upgrade pip \
 
 COPY guard/ ./guard/
 
-# CMD ["uvicorn guard.api.server:app --reload"]
+EXPOSE 8000
 
-CMD ["tail", "-f", "/dev/null"]
+CMD ["uvicorn", "guard.api.server:app", "--reload"]

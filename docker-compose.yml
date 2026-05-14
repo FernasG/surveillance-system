@@ -18,6 +18,10 @@ services:
       - ./guard:/app/guard
       - ./videos:/app/videos
       - ./.env:/app/.env
+    ports:
+      - 8080:8000
+    devices:
+      - "/dev/video0:/dev/video0"
     depends_on:
       - chromadb
     networks:

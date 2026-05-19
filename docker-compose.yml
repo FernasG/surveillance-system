@@ -8,7 +8,7 @@ services:
     image: pi-guard:latest
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: guard/Dockerfile
     container_name: pi-guard
     env_file:
       - .env
@@ -20,10 +20,27 @@ services:
       - ./.env:/app/.env
     ports:
       - 8080:8000
-    devices:
-      - "/dev/video0:/dev/video0"
     depends_on:
       - chromadb
+      - redis
+    networks:
+      - guard-network
+
+  watcher:
+    image: watcher:latest
+    build:
+      context: ./watcher
+      dockerfile: Dockerfile
+    container_name: watcher
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./videos:/app/videos
+      - ./.env:/app/.env
+    depends_on:
+      - redis
     networks:
       - guard-network
 
@@ -35,5 +52,14 @@ services:
     restart: unless-stopped
     volumes:
       - ./chroma_data:/chroma/chroma
+    networks:
+      - guard-network
+
+  redis:
+    image: redis:alpine
+    restart: always
+    container_name: redis
+    ports:
+      - 6379:6379
     networks:
       - guard-network

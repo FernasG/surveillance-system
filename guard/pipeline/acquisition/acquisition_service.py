@@ -1,11 +1,22 @@
-from guard.core.interfaces import CameraDriver
+import redis, time
+from watchdog.observers import Observer
+from ....watcher.watcher import VideoSegmentHandler
 
 class AcquisitionService:
-    def __init__(self, camera_driver: CameraDriver):
-        self.camera_driver = camera_driver
+    def __init__(self, redis_client: redis.Redis):
+        self.redis_client = redis_client
 
-    def start(self, segment_time: int = 10, path: str = "videos"):
-        self.camera_driver.start_recording(segment_time, path)
-
-    def stop(self):
-        self.camera_driver.stop_recording()
+    def start_watcher(self, folder_path: str):
+        event_handler = VideoSegmentHandler(self.redis_client)
+        observer = Observer()
+        observer.schedule(event_handler, folder_path, recursive=False)
+        
+        observer.start()
+        
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        
+        observer.join()

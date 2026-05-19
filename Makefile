@@ -13,5 +13,8 @@ down:
 logs:
 	docker compose logs -f
 
-sh:
+sh\:guard:
 	docker compose exec pi-guard bash
+
+sh\:watcher:
+	docker compose exec watcher bash

@@ -1,4 +1,4 @@
-import torch, clip, cv2
+import torch, clip, cv2, os
 import numpy as np
 from PIL import Image
 from guard.core.interfaces import VectorizerInterface
@@ -9,8 +9,9 @@ class CLIPVectorizer(VectorizerInterface):
     def __init__(self):
         super().__init__()
 
+        self.modelName = os.environ.get("CLIP_MODEL", "ViT-B/32")
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model, self.preprocess = clip.load("ViT-B/16", device=self.device, jit=False)
+        self.model, self.preprocess = clip.load(self.modelName, device=self.device, jit=False)
 
     def encode_image(self, frame: VideoFrame) -> VectorEmbedding:
         img = Image.fromarray(cv2.cvtColor(frame.data, cv2.COLOR_BGR2RGB))

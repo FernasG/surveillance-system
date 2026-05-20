@@ -26,6 +26,7 @@ class Query(BaseModel):
     text: str = Field(min_length=3)
 
 class Settings(BaseSettings):
+    env: str
     clip_model: str
     database_host: str
     database_port: str

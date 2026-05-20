@@ -1,7 +1,6 @@
-import redis, time, json, os
+import redis, time, json, os, logging
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-
 
 class VideoSegmentHandler(FileSystemEventHandler):
     def __init__(self):
@@ -15,7 +14,7 @@ class VideoSegmentHandler(FileSystemEventHandler):
 
     def on_closed(self, event):
         if not event.is_directory and event.src_path.endswith(".mp4"):
-            print(f"--- EVENTO: Novo segmento concluído: {event.src_path} ---")
+            logging.info(f"[WATCHER] New segment completed: {event.src_path}")
             file_path = event.src_path
             file_name = os.path.basename(file_path)
             
@@ -32,7 +31,7 @@ class VideoSegmentHandler(FileSystemEventHandler):
             }
 
             self._redis_client.lpush(self.queue_name, json.dumps(data))
-            print(f"[WATCHER] Evento enviado para fila: {file_name}")
+            logging.info(f"[WATCHER] Event sent to queue: {file_name}")
 
 
 if __name__ == "__main__":
@@ -44,7 +43,7 @@ if __name__ == "__main__":
     observer.start()
 
     try:
-        print("Sistema de monitoramento e gravação iniciado. Pressione Ctrl+C para parar.")
+        logging.info("[WATCHER] Monitoring and recording system started")
         while True:
             time.sleep(1)
     except KeyboardInterrupt:

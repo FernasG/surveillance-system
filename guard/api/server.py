@@ -2,9 +2,19 @@ from fastapi import FastAPI, Depends, Request
 
 from guard.core.entities import Query
 from guard.api.lifespan import app_lifespan
+from guard.api.middlewares import RequestIdMiddleware
+from guard.infrastructure.logging.logger_config import setup_logging
 from guard.pipeline.retrieval.retrieval_service import RetrievalService
+from guard.core.entities import Settings
 
-app = FastAPI(lifespan=app_lifespan)
+settings = Settings()
+
+IS_PRODUCTION = settings.env == "production"
+
+setup_logging(json_format=IS_PRODUCTION)
+
+app = FastAPI(title="Pi Guard", lifespan=app_lifespan)
+app.add_middleware(RequestIdMiddleware)
 
 def get_retrieval_service(request: Request) -> RetrievalService:
     return request.state.retrieval_service

@@ -15,7 +15,7 @@ class RedisQueueWorker:
         self._redis_client = redis_client
 
     async def start(self, queue_name: str):
-        logger.info("Iniciando Worker do Redis (Assíncrono)...")
+        logger.info("Starting Redis Worker (Async)")
         
         try:
             while True:
@@ -30,25 +30,25 @@ class RedisQueueWorker:
 
                     queue_message = QueueMessage(**data)
                     
-                    logger.info(f"Processando novo vídeo: {queue_message.video_path}")
+                    logger.info(f"Processing new video: {queue_message.video_path}")
                     
                     video = self.acquisition_service.get_video(queue_message.video_path)
                     frames = self.preprocessor_service.process(queue_message, video)
                     self.inference_service.inferer(frames)
                     
                 except json.JSONDecodeError:
-                    logger.error("Erro ao decodificar JSON da mensagem do Redis.")
+                    logger.error("Failed to decode Redis message JSON.")
                 except Exception as e:
-                    logger.error(f"Erro inesperado no pipeline do worker: {str(e)}", exc_info=True)
+                    logger.error(f"Unexpected error in worker pipeline: {str(e)}", exc_info=True)
 
         except asyncio.CancelledError:
-            logger.info("Worker do Redis interceptado pelo sinal de cancelamento.")
+            logger.error(f"Unexpected error in worker pipeline: {str(e)}", exc_info=True)
         finally:
             await self.stop()
 
     async def stop(self):
         if self._redis_client:
             await self._redis_client.close()
-            logger.info("Conexão com o Redis fechada com sucesso.")
+            logger.info("Redis connection closed successfully.")
 
-        logger.info("Worker do Redis completamente parado.")
+        logger.info("Redis Worker fully stopped.")

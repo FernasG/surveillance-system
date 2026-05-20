@@ -216,7 +216,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # Videos Folder
-videos/*
+videos/*.mp4
+videos/*.mkv
 
 # Database Folders
 chroma_data/

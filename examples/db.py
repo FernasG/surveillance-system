@@ -1,4 +1,5 @@
 import chromadb
+import json
 
 client = chromadb.HttpClient(host="localhost", port=8000)
 
@@ -7,9 +8,11 @@ collections = client.list_collections()
 for c in collections:
     print(c.name)
 
-    # collection = client.get_collection(c.name)
+    collection = client.get_collection(c.name)
 
-    # client.delete_collection(c.name)
-    # data = collection.get()
+    data = collection.get(include=["embeddings"])
 
-    # print(data)
+    # json_data = json.dumps(data, indent=2)
+
+    print(data)
+    # print(json_data)

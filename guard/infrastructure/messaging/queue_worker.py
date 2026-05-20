@@ -1,13 +1,16 @@
 import asyncio, json, logging
 from redis import asyncio as aioredis
+from guard.core.entities import QueueMessage
 from guard.pipeline.inference.inference_service import InferenceService
+from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 from guard.pipeline.preprocessing.preprocessor_service import PreprocessorService
 
 logger = logging.getLogger(__name__)
 
 class RedisQueueWorker:
-    def __init__(self, redis_client: aioredis.Redis, inference_service: InferenceService, preprocessor_service: PreprocessorService):
+    def __init__(self, redis_client: aioredis.Redis, acquisition_service: AcquisitionService, inference_service: InferenceService, preprocessor_service: PreprocessorService):
         self.inference_service = inference_service
+        self.acquisition_service = acquisition_service
         self.preprocessor_service = preprocessor_service
         self._redis_client = redis_client
 
@@ -24,10 +27,13 @@ class RedisQueueWorker:
                         
                     _, message = result
                     data = json.loads(message)
+
+                    queue_message = QueueMessage(**data)
                     
-                    logger.info(f"Processando novo vídeo: {data.get('video_path')}")
+                    logger.info(f"Processando novo vídeo: {queue_message.video_path}")
                     
-                    frames = self.preprocessor_service.process(data["video_path"])
+                    video = self.acquisition_service.get_video(queue_message.video_path)
+                    frames = self.preprocessor_service.process(queue_message, video)
                     self.inference_service.inferer(frames)
                     
                 except json.JSONDecodeError:

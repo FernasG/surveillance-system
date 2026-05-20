@@ -54,6 +54,13 @@ class CLIPVectorizer(VectorizerInterface):
         embeddings_numpy = batch_embeddings.cpu().numpy()
 
         return [
-            VectorEmbedding(embeddings=vector, metadata={"data": 1}) 
-            for vector in embeddings_numpy
+            VectorEmbedding(
+                embeddings=vector,
+                metadata={
+                    "elapsed_ms": frame.elapsed_ms,
+                    "frame_index": frame.frame_index,
+                    "video_path": frame.video_path,
+                    "timestamp": frame.timestamp
+                }) 
+            for vector, frame in zip(embeddings_numpy, frames)
         ]

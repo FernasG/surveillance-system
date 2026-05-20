@@ -16,4 +16,4 @@ class InferenceService():
         for batch in batches:
             vectors = self.vectorizer.encode_batch_images(batch)
 
-            self.store.save_batch(vectors, doc_id="strdoc1")
+            self.store.save_batch(vectors)

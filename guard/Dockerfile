@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
     libavformat-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/
+COPY guard/requirements.txt /app/
 
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
@@ -23,6 +23,6 @@ RUN pip install --upgrade pip \
 
 COPY guard/ ./guard/
 
-EXPOSE 8000
+EXPOSE 3000
 
-CMD ["uvicorn", "guard.api.server:app", "--reload"]
+CMD ["uvicorn", "guard.api.server:app", "--reload", "--host", "0.0.0.0", "--port", "3000"]

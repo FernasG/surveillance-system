@@ -6,13 +6,21 @@ from pydantic_settings import BaseSettings
 @dataclass
 class VideoFrame:
     timestamp: float
+    video_path: str
+    elapsed_ms: int
+    frame_index: int
     data: np.ndarray
-    source_id: str
 
 @dataclass
 class VectorEmbedding:
     embeddings: np.ndarray
     metadata: dict
+
+@dataclass
+class QueueMessage:
+    timestamp: int
+    video_path: str
+    created_at: str
 
 class Query(BaseModel):
     text: str = Field(min_length=3)

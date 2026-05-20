@@ -19,7 +19,7 @@ services:
       - ./videos:/app/videos
       - ./.env:/app/.env
     ports:
-      - 8080:8000
+      - 3000:3000
     depends_on:
       - chromadb
       - redis

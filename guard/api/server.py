@@ -10,6 +10,7 @@ from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
 
 from guard.pipeline.retrieval.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
+from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 from guard.pipeline.preprocessing.mog2_frame_sampler import MOG2FrameSampler
 from guard.pipeline.preprocessing.preprocessor_service import PreprocessorService
 
@@ -23,11 +24,12 @@ async def lifespan(app: FastAPI):
     redis_client = aioredis.Redis(host=settings.redis_host, port=settings.redis_port)
     store = ChromaDBStore(host=settings.database_host, port=settings.database_port)
 
+    acquisition_service = AcquisitionService()
     inference_service = InferenceService(vectorizer=vectorizer, store=store)
     retrieval_service = RetrievalService(vectorizer=vectorizer, store=store)
     preprocessor_service = PreprocessorService(sampler=sampler)
 
-    queue_worker = RedisQueueWorker(redis_client, inference_service, preprocessor_service)
+    queue_worker = RedisQueueWorker(redis_client, acquisition_service, inference_service, preprocessor_service)
     worker_task = asyncio.create_task(queue_worker.start(settings.redis_queue_name))
     
     yield {

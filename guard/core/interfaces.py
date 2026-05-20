@@ -24,11 +24,11 @@ class VectorizerInterface(ABC):
 
 class VectorStoreInterface(ABC):
     @abstractmethod
-    def save(self, embedding: VectorEmbedding, doc_id: str) -> bool:
+    def save(self, embedding: VectorEmbedding) -> bool:
         pass
 
     @abstractmethod
-    def save_batch(self, embeddings: list[VectorEmbedding], doc_id: str) -> bool:
+    def save_batch(self, embeddings: list[VectorEmbedding]) -> bool:
         pass
 
     @abstractmethod

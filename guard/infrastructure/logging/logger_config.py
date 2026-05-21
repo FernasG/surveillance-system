@@ -31,7 +31,7 @@ def setup_logging(json_format: bool = False):
         log_format = (
             "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
             "<level>{level: <8}</level> | "
-            "<magenta>[{extra[request_id]}]</magenta> | "
+            # "<magenta>[{extra[request_id]}]</magenta> | "
             "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
         )
         logger.configure(patcher=inject_request_id)

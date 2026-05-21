@@ -2,7 +2,6 @@ import cv2
 from guard.core.interfaces import VideoFrameSampler
 from guard.core.entities import VideoFrame, QueueMessage
 
-
 class MOG2FrameSampler(VideoFrameSampler):
     def __init__(self):
         super().__init__()

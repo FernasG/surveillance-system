@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
 from abc import ABC, abstractmethod
-from guard.core.entities import VideoFrame, VectorEmbedding
-
+from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage
 
 class VideoFrameSampler(ABC):
     @abstractmethod
@@ -22,6 +21,11 @@ class VectorizerInterface(ABC):
     def encode_batch_images(self, frames: list[VideoFrame]) -> list[VectorEmbedding]:
         pass
 
+class VLMInterface(ABC):
+    @abstractmethod
+    def generate(self, messages: list[VLMMessage]) -> VLMResponse:
+        pass
+
 class VectorStoreInterface(ABC):
     @abstractmethod
     def save(self, embedding: VectorEmbedding) -> bool:
@@ -32,7 +36,7 @@ class VectorStoreInterface(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_vector: list[float], top_k: int = 5) -> list[dict]:
+    def search(self, query_vector: list[float], top_k: int = 5) -> dict:
         pass
 
 class CameraDriver(ABC):

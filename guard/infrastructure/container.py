@@ -2,6 +2,7 @@ import asyncio
 from redis import asyncio as aioredis
 
 from guard.core.entities import Settings
+from guard.infrastructure.models.gemma_vlm import GemmaVLM
 from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
 from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
@@ -24,13 +25,14 @@ class ApplicationContainer:
     async def initialize(self):
         self.vectorizer = CLIPVectorizer()
         sampler = MOG2FrameSampler()
+        vlm = GemmaVLM()
         
         self.redis_client = aioredis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
 
         acquisition_service = AcquisitionService()
         inference_service = InferenceService(vectorizer=self.vectorizer, store=store)
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store)
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=None)
         preprocessor_service = PreprocessorService(sampler=sampler)
 
         queue_worker = RedisQueueWorker(

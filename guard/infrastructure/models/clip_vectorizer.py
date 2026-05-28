@@ -4,7 +4,6 @@ from PIL import Image
 from guard.core.interfaces import VectorizerInterface
 from guard.core.entities import VideoFrame, VectorEmbedding
 
-
 class CLIPVectorizer(VectorizerInterface):
     def __init__(self):
         super().__init__()
@@ -38,7 +37,7 @@ class CLIPVectorizer(VectorizerInterface):
     def encode_batch_images(self, frames: list[VideoFrame]) -> list[VectorEmbedding]:
         if not frames:
             return []
-        
+
         processed_images = []
 
         for frame in frames:

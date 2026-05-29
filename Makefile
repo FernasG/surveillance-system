@@ -18,3 +18,6 @@ sh\:guard:
 
 sh\:watcher:
 	docker compose exec watcher bash
+
+sh\:ml:
+	docker compose exec ml-server bash

@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package ml_server;
+
+// The ML Model Serving Service
+service MLServer {
+  // 1. Language Model Endpoint
+  rpc GenerateText(GenerateTextRequest) returns (GenerateTextResponse) {}
+  
+  // 2. Embedding Model Endpoint (Single vector output)
+  rpc EncodeText(EncodeTextRequest) returns (EncodeTextResponse) {}
+  rpc EncodeImage(EncodeImageRequest) returns (EncodeImageResponse) {}
+  rpc EncodeBatchImages(EncodeBatchImagesRequest) returns (EncodeBatchImagesResponse) {}
+}
+
+// Request payload for Language Model
+message GenerateTextRequest {
+  string prompt = 1;
+  repeated bytes images = 2;
+  float temperature = 3;
+  int32 max_tokens = 4;
+}
+
+// Streamed response chunk for Language Model
+message GenerateTextResponse {
+  string text = 1;
+}
+
+// Request payload for Embeddings
+message EncodeTextRequest {
+  string text = 1;
+}
+
+// Response payload containing the embedding vector
+message EncodeTextResponse {
+  repeated float embedding = 1;
+}
+
+message EncodeImageRequest {
+  bytes image_data = 1;
+}
+
+message EncodeImageResponse {
+  repeated float embedding = 1;
+}
+
+message EncodeBatchImagesRequest {
+  repeated bytes images_data = 1;
+}
+
+message EncodeBatchImagesResponse {
+  repeated EncodeImageResponse embeddings = 1; 
+}

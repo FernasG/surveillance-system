@@ -221,3 +221,6 @@ videos/*.mkv
 
 # Database Folders
 chroma_data/
+
+# Gemma Storage
+ollama/

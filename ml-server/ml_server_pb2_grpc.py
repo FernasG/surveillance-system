@@ -35,11 +35,6 @@ class MLServerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GenerateText = channel.unary_unary(
-                '/ml_server.MLServer/GenerateText',
-                request_serializer=ml__server__pb2.GenerateTextRequest.SerializeToString,
-                response_deserializer=ml__server__pb2.GenerateTextResponse.FromString,
-                _registered_method=True)
         self.EncodeText = channel.unary_unary(
                 '/ml_server.MLServer/EncodeText',
                 request_serializer=ml__server__pb2.EncodeTextRequest.SerializeToString,
@@ -61,15 +56,8 @@ class MLServerServicer(object):
     """The ML Model Serving Service
     """
 
-    def GenerateText(self, request, context):
-        """1. Language Model Endpoint
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def EncodeText(self, request, context):
-        """2. Embedding Model Endpoint (Single vector output)
+        """1. Embedding Model Endpoint (Single vector output)
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -90,11 +78,6 @@ class MLServerServicer(object):
 
 def add_MLServerServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GenerateText': grpc.unary_unary_rpc_method_handler(
-                    servicer.GenerateText,
-                    request_deserializer=ml__server__pb2.GenerateTextRequest.FromString,
-                    response_serializer=ml__server__pb2.GenerateTextResponse.SerializeToString,
-            ),
             'EncodeText': grpc.unary_unary_rpc_method_handler(
                     servicer.EncodeText,
                     request_deserializer=ml__server__pb2.EncodeTextRequest.FromString,
@@ -121,33 +104,6 @@ def add_MLServerServicer_to_server(servicer, server):
 class MLServer(object):
     """The ML Model Serving Service
     """
-
-    @staticmethod
-    def GenerateText(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/ml_server.MLServer/GenerateText',
-            ml__server__pb2.GenerateTextRequest.SerializeToString,
-            ml__server__pb2.GenerateTextResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
 
     @staticmethod
     def EncodeText(request,

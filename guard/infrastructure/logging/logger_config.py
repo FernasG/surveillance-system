@@ -39,6 +39,8 @@ def setup_logging(json_format: bool = False):
 
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     for logger_name in ("uvicorn", "uvicorn.asgi", "uvicorn.access", "uvicorn.error"):
         logging_logger = logging.getLogger(logger_name)
         logging_logger.handlers = [InterceptHandler()]

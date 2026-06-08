@@ -6,33 +6,14 @@ import ml_server_pb2
 import ml_server_pb2_grpc
 from PIL import Image
 from concurrent import futures
-from models.language_model import LanguageModel
 from models.embedding_model import EmbeddingModel
 
 class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
     def __init__(self):
         self.models_ready = threading.Event()
-        self.language_model = LanguageModel()
         self.embedding_model = EmbeddingModel()
 
-        threading.Thread(target=self._load_models, daemon=True).start()
-
-    def GenerateText(self, request, context):
-        if not self.models_ready.is_set():
-            logging.info("Request received but models are still loading. Waiting...")
-            self.models_ready.wait()
-
-        logging.info(f"LLM Prompt received: '{request.prompt}'")
-
-        pil_images = [Image.open(io.BytesIO(img)).convert("RGB") for img in request.images]
-
-        content = [{"type": "image"} for _ in pil_images]
-        content.append({"type": "text", "text": request.prompt})
-        messages = [{"role": "user", "content": content}]
-        
-        text = self.language_model.generate(messages=messages, images=pil_images)
-
-        return ml_server_pb2.GenerateTextResponse(text=text)
+        threading.Thread(target=self._load_model, daemon=True).start()
 
     def EncodeText(self, request, context):
         if not self.models_ready.is_set():
@@ -76,11 +57,10 @@ class MLServerServicer(ml_server_pb2_grpc.MLServerServicer):
 
         return ml_server_pb2.EncodeBatchImagesResponse(embeddings=proto_embeddings)
     
-    def _load_models(self):
+    def _load_model(self):
         logging.info("Loading ML models into memory...")
-        
-        # self.embedding_model.initialize()
-        self.language_model.initialize()
+
+        self.embedding_model.initialize()
 
         logging.info("Models loaded successfully!")
 

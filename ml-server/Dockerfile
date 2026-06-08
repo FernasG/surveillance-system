@@ -11,8 +11,8 @@ COPY requirements.txt /app/
 
 RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir git+https://github.com/openai/CLIP.git \
-    && pip install -U git+https://github.com/huggingface/transformers.git
+    && pip install --no-cache-dir git+https://github.com/openai/CLIP.git
+    # && pip install -U git+https://github.com/huggingface/transformers.git
 
 COPY . .
 

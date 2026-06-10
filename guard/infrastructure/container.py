@@ -32,7 +32,7 @@ class ApplicationContainer:
 
         acquisition_service = AcquisitionService()
         inference_service = InferenceService(vectorizer=self.vectorizer, store=store)
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=None)
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=vlm)
         preprocessor_service = PreprocessorService(sampler=sampler)
 
         queue_worker = RedisQueueWorker(

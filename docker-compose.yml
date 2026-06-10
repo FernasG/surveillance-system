@@ -21,7 +21,6 @@ services:
     ports:
       - 3000:3000
     depends_on:
-      - ml-server
       - chromadb
       - redis
     networks:
@@ -42,21 +41,6 @@ services:
       - ./.env:/app/.env
     depends_on:
       - redis
-    networks:
-      - guard-network
-
-  ml-server:
-    image: ml-server:latest
-    build:
-      context: ./ml-server
-      dockerfile: Dockerfile
-    container_name: ml-server
-    volumes:
-      - ./ml-server:/app
-    ports:
-      - 50051:50051
-    depends_on:
-      - ollama
     networks:
       - guard-network
 

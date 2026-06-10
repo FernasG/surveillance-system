@@ -23,7 +23,7 @@ class VectorizerInterface(ABC):
 
 class VLMInterface(ABC):
     @abstractmethod
-    def generate(self, messages: list[VLMMessage]) -> VLMResponse:
+    def generate(self, messages: list[VLMMessage], images: list = None, format_response: str = None) -> VLMResponse:
         pass
 
 class VectorStoreInterface(ABC):

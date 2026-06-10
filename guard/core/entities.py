@@ -29,9 +29,9 @@ class VLMResponse:
     content: str
 
 @dataclass
-class VLMMessage(BaseModel):
+class VLMMessage:
     role: Literal["user", "assistant", "system"]
-    content: list[dict]
+    content: str
 
 class Query(BaseModel):
     text: str = Field(min_length=3)
@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     redis_host: str
     redis_port: str
     redis_queue_name: str
+    ollama_api_url: str
+    ollama_model_name: str
 
     class Config:
         env_file = ".env"

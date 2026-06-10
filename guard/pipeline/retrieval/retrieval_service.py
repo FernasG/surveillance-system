@@ -1,4 +1,4 @@
-import cv2, os
+import cv2
 import numpy as np
 from PIL import Image
 from loguru import logger
@@ -23,17 +23,15 @@ class RetrievalService:
             req_logger.info("Starting RAG Query")
 
             query_vector = self.vectorizer.encode_text(text)
-            search_result = self.store.search(query_vector, top_k=top_k)
+            search_result = self.store.search(query_vector, top_k=3)
 
             metadatas = search_result.get("metadatas", [])
             frames: list[np.ndarray] = []
 
             if not metadatas or not metadatas[0]:
                 return {"frames": frames}
-            
-            metadatas = metadatas[0]
 
-            for metadata in metadatas:
+            for metadata in metadatas[0]:
                 elapsed_ms = metadata.get("elapsed_ms")
                 video_path = metadata.get("video_path")
 
@@ -61,29 +59,38 @@ class RetrievalService:
             
             messages, pil_images = self._setup_vlm_params(text, frames)
 
-            response_text = self.vlm.generate(messages, pil_images)
+            response = self.vlm.generate(messages, pil_images, "json")
 
-            return {"response_text": response_text}
+            return {"response": response}
         except Exception as e:
             req_logger.critical(f"Something went really wrong {e}")
 
         
     def _setup_vlm_params(self, text: str, frames: list[np.ndarray]) -> tuple[list[VLMMessage], list[Image.Image]]:
         pil_images: list[Image.Image] = []
-        content_list = []
 
         for frame in frames:
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            small_frame = cv2.resize(frame, (448, 448), interpolation=cv2.INTER_AREA)
+            rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
             pil_img = Image.fromarray(rgb_frame)
             pil_images.append(pil_img)
-            
-            content_list.append({"type": "image"})
 
-        content_list.append({"type": "text", "text": f"Order the images that most represents user query: '{text}'"})
-
+        prompt_text = (
+            f"You are a video surveillance AI assistant. I have provided {len(frames)} distinct sequential frames from a security camera feed.\n"
+            f"Carefully analyze ALL provided images and evaluate how well each one matches this user search query: '{text}'\n\n"
+            f"For each image, provide a confidence score from 0.0 to 1.0. "
+            f"Lower your score if the image is blurry, does not show a clear subject, or is otherwise irrelevant. "
+            f"Respond strictly in this JSON format:\n"
+            "[\n"
+            "  {\n"
+            '    "index": 0,\n'
+            '    "confidence_score": 0.0\n'
+            "  },\n"
+            "  ...\n"
+            "]"
+        )
         messages: list[VLMMessage] = [
-            VLMMessage(role="user", content=content_list)
+            VLMMessage(role="user", content=prompt_text)
         ]
 
         return messages, pil_images
-                    

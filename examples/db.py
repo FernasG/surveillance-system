@@ -10,6 +10,8 @@ for c in collections:
 
     collection = client.get_collection(c.name)
 
+    print(f"Number of items: {collection.count()}")
+
     data = collection.get(include=["embeddings"])
 
     # json_data = json.dumps(data, indent=2)

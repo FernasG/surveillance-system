@@ -6,6 +6,7 @@ from guard.infrastructure.models.gemma_vlm import GemmaVLM
 from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
 from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
+from guard.infrastructure.models.utils.prompt_manager import PromptManager
 
 from guard.pipeline.retrieval.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
@@ -24,6 +25,7 @@ class ApplicationContainer:
 
     async def initialize(self):
         self.vectorizer = CLIPVectorizer()
+        prompt_manager = PromptManager()
         sampler = MOG2FrameSampler()
         vlm = GemmaVLM()
         
@@ -32,8 +34,8 @@ class ApplicationContainer:
 
         acquisition_service = AcquisitionService()
         inference_service = InferenceService(vectorizer=self.vectorizer, store=store)
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=vlm)
         preprocessor_service = PreprocessorService(sampler=sampler)
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=vlm, prompt_manager=prompt_manager)
 
         queue_worker = RedisQueueWorker(
             self.redis_client, 

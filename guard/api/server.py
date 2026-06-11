@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from guard.core.entities import Query
 from guard.api.lifespan import app_lifespan
@@ -15,6 +16,13 @@ setup_logging(json_format=IS_PRODUCTION)
 
 app = FastAPI(title="Pi Guard", lifespan=app_lifespan)
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_retrieval_service(request: Request) -> RetrievalService:
     return request.state.retrieval_service

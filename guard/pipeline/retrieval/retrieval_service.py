@@ -1,22 +1,23 @@
 import cv2
+import base64
 import numpy as np
+from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 from PIL import Image
 from loguru import logger
+from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface
 from guard.core.entities import Settings, VLMMessage
 
 class RetrievalService:
-    def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface):
+    def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface, prompt_manager: PromptManager):
         self.settings = Settings()
+        self.prompt_manager = prompt_manager
         self.vectorizer = vectorizer
         self.store = store
         self.vlm = vlm
 
     def search_by_text(self, text: str, top_k: int = 5):
-        log_context = {
-            "text": text,
-            "top_k": top_k
-        }
+        log_context = { "text": text, "top_k": top_k }
         req_logger = logger.bind(queue_message=log_context)
 
         try:
@@ -26,10 +27,11 @@ class RetrievalService:
             search_result = self.store.search(query_vector, top_k=3)
 
             metadatas = search_result.get("metadatas", [])
-            frames: list[np.ndarray] = []
+
+            extracted_data = []
 
             if not metadatas or not metadatas[0]:
-                return {"frames": frames}
+                return {"results": []}
 
             for metadata in metadatas[0]:
                 elapsed_ms = metadata.get("elapsed_ms")
@@ -52,19 +54,42 @@ class RetrievalService:
                 if not success or frame is None:
                     continue
 
-                frames.append(frame)
+                extracted_data.append({
+                    "video_path": video_path,
+                    "elapsed_ms": elapsed_ms,
+                    "raw_frame": frame
+                })
 
-            if not frames:
-                return {"frames": frames}
+            if not extracted_data:
+                return {"results": []}
             
+            frames = [data["raw_frame"] for data in extracted_data]
             messages, pil_images = self._setup_vlm_params(text, frames)
 
             response = self.vlm.generate(messages, pil_images, "json")
 
-            return {"response": response}
+            final_results = []
+
+            for eval_item in response.content:
+                idx = eval_item.get("index")
+                
+                if idx is not None and 0 <= idx < len(extracted_data):
+                    frame_context = extracted_data[idx]
+                    
+                    final_results.append({
+                        "video_path": frame_context["video_path"],
+                        "elapsed_ms": frame_context["elapsed_ms"],
+                        "confidence_score": eval_item.get("confidence_score", 0.0),
+                        "frame_base64": cv2_to_base64(frame_context["raw_frame"])
+                    })
+
+            final_results = sorted(final_results, key=lambda x: x["confidence_score"], reverse=True)
+
+            return {"results": final_results}
         except Exception as e:
             req_logger.critical(f"Something went really wrong {e}")
 
+            return {"error": str(e), "results": []}
         
     def _setup_vlm_params(self, text: str, frames: list[np.ndarray]) -> tuple[list[VLMMessage], list[Image.Image]]:
         pil_images: list[Image.Image] = []
@@ -75,20 +100,12 @@ class RetrievalService:
             pil_img = Image.fromarray(rgb_frame)
             pil_images.append(pil_img)
 
-        prompt_text = (
-            f"You are a video surveillance AI assistant. I have provided {len(frames)} distinct sequential frames from a security camera feed.\n"
-            f"Carefully analyze ALL provided images and evaluate how well each one matches this user search query: '{text}'\n\n"
-            f"For each image, provide a confidence score from 0.0 to 1.0. "
-            f"Lower your score if the image is blurry, does not show a clear subject, or is otherwise irrelevant. "
-            f"Respond strictly in this JSON format:\n"
-            "[\n"
-            "  {\n"
-            '    "index": 0,\n'
-            '    "confidence_score": 0.0\n'
-            "  },\n"
-            "  ...\n"
-            "]"
+        prompt_text = self.prompt_manager.build(
+            prompt_name="search_evaluation",
+            num_frames=len(frames),
+            user_query=text
         )
+
         messages: list[VLMMessage] = [
             VLMMessage(role="user", content=prompt_text)
         ]

@@ -59,7 +59,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G
+          memory: 12G
 
   chromadb:
     image: chromadb/chroma:latest

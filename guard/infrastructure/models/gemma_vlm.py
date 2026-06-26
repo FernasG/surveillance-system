@@ -1,4 +1,5 @@
 import requests
+from loguru import logger
 from typing import Literal
 from PIL.Image import Image
 from guard.core.entities import Settings
@@ -61,7 +62,7 @@ class GemmaVLM(VLMInterface):
             )
             response.raise_for_status()
             response_json = response.json()
-            
+
             content = response_json["choices"][0]["message"]["content"].strip()
             
             if format_response:
@@ -69,7 +70,8 @@ class GemmaVLM(VLMInterface):
 
             return VLMResponse(role="assistant", content=content)
         except requests.exceptions.RequestException as e:
-            return VLMResponse(
-                role="assistant", 
-                content=f"Error communicating with Ollama server: {str(e)}"
-            )
+            message = f"Error communicating with Ollama server: {str(e)}"
+
+            logger.error(message)
+
+            return VLMResponse(role="assistant", content=message)

@@ -31,9 +31,15 @@ class ChromaDBStore(VectorStoreInterface):
         metadatas_list = [emp.metadata for emp in embeddings]
         ids_list = [str(uuid4()) for _ in range(len(embeddings))]
 
+        documents_list = [
+            emp.metadata.get("description", "") if emp.metadata else "" 
+            for emp in embeddings
+        ]
+
         self.collection.add(
             embeddings=vectors_list,
             metadatas=metadatas_list,
+            documents=documents_list,
             ids=ids_list
         )
         

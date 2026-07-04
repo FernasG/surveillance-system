@@ -14,8 +14,10 @@ class GemmaVLM(VLMInterface):
 
         settings = Settings()
 
-        self.api_url = settings.ollama_api_url
-        self.model_name = settings.ollama_model_name
+        # self.api_url = settings.ollama_api_url
+        # self.model_name = settings.ollama_model_name
+        self.api_url = "http://192.168.1.10:8082"
+        self.model_name = "gemma4-e2b"
         self.request_timeout = 300
         self.model_temperature = 0.1
 
@@ -54,6 +56,9 @@ class GemmaVLM(VLMInterface):
             "format": format_response
         }
 
+        if format_response == "json":
+            payload["response_format"] = {"type": "json_object"}
+
         try:
             response = requests.post(
                 f"{self.api_url}/v1/chat/completions",
@@ -64,9 +69,10 @@ class GemmaVLM(VLMInterface):
             response_json = response.json()
 
             content = response_json["choices"][0]["message"]["content"].strip()
+
+            print(content)
             
-            if format_response:
-                content = parse_json_markdown(content)
+            content = parse_json_markdown(content)
 
             return VLMResponse(role="assistant", content=content)
         except requests.exceptions.RequestException as e:

@@ -11,8 +11,10 @@ from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.pipeline.retrieval.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
 from guard.pipeline.acquisition.acquisition_service import AcquisitionService
+from guard.infrastructure.database.redis_auth_store import RedisAuthStore
 from guard.pipeline.preprocessing.mog2_frame_sampler import MOG2FrameSampler
 from guard.pipeline.preprocessing.preprocessor_service import PreprocessorService
+from guard.core.services.auth_service import AuthService
 
 class ApplicationContainer:
     def __init__(self, settings: Settings):
@@ -20,6 +22,7 @@ class ApplicationContainer:
         
         self.vectorizer = None
         self.redis_client = None
+        self.auth_service = None
         self.retrieval_service = None
         self._worker_task = None
 
@@ -31,6 +34,10 @@ class ApplicationContainer:
         
         self.redis_client = aioredis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
+
+        auth_repo = RedisAuthStore(self.redis_client)
+        self.auth_service = AuthService(auth_repo)
+        await self.auth_service.initialize_admin()
 
         acquisition_service = AcquisitionService()
         inference_service = InferenceService(vectorizer=self.vectorizer, store=store)

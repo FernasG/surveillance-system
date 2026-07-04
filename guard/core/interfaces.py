@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
+from typing import Optional
 from abc import ABC, abstractmethod
-from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage
+from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage, User
 
 class VideoFrameSampler(ABC):
     @abstractmethod
@@ -46,4 +47,13 @@ class CameraDriver(ABC):
 
     @abstractmethod
     def stop_recording(self):
+        pass
+
+class IAuthRepository(ABC):
+    @abstractmethod
+    def get_user(self, username: str) -> Optional[User]:
+        pass
+
+    @abstractmethod
+    def save_user(self, user: User) -> None:
         pass

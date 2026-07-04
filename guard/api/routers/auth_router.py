@@ -1,0 +1,45 @@
+import jwt
+from jwt.exceptions import InvalidTokenError
+from fastapi import APIRouter, Request, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+
+from guard.core.entities import Settings
+from guard.core.entities import LoginRequest, RegisterRequest
+from guard.core.services.auth_service import AuthService
+
+router = APIRouter(tags=["Authentication"])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+settings = Settings()
+
+def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> dict:
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        username: str = payload.get("sub")
+
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        
+        return payload
+    except InvalidTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+def require_admin(payload: dict = Depends(get_current_user_token_data)) -> bool:
+    if not payload.get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
+    
+    return True
+
+def get_auth_service(request: Request) -> AuthService:
+    return request.state.auth_service
+
+@router.post("/login")
+async def login(request: LoginRequest, auth_service: AuthService = Depends(get_auth_service)):
+    token = await auth_service.authenticate_user(request.username, request.password)
+
+    return {"access_token": token, "token_type": "bearer"}
+
+@router.post("/register")
+async def register(request: RegisterRequest, is_admin: bool = Depends(require_admin), auth_service: AuthService = Depends(get_auth_service)):
+    await auth_service.register_new_user(request.username, request.password, current_user_is_admin=is_admin)
+    
+    return {"message": "User successfully created"}

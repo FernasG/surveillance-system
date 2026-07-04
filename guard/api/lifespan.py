@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from guard.core.entities import Settings
-from guard.infrastructure.container import ApplicationContainer
+from guard.infrastructure.di.container import ApplicationContainer
 
 settings = Settings()
 
@@ -12,6 +12,9 @@ async def app_lifespan(app: FastAPI):
     
     await container.initialize()
     
-    yield {"retrieval_service": container.retrieval_service}
+    yield {
+        "retrieval_service": container.retrieval_service,
+        "auth_service": container.auth_service
+    }
 
     await container.shutdown()

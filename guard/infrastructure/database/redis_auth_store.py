@@ -1,10 +1,9 @@
-import redis
 import redis.asyncio as aioredis
 from typing import Optional
 from guard.core.entities import User
 from guard.core.interfaces import IAuthRepository
 
-class RedisStore(IAuthRepository):
+class RedisAuthStore(IAuthRepository):
     def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
 
@@ -23,8 +22,5 @@ class RedisStore(IAuthRepository):
     async def save_user(self, user: User) -> None:
         await self.redis.hset(
             f"user:{user.username}", 
-            mapping={
-                "hashed_password": user.hashed_password,
-                "is_admin": str(user.is_admin)
-            }
+            mapping={"hashed_password": user.hashed_password, "is_admin": str(user.is_admin)}
         )

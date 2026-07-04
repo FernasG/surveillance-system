@@ -17,15 +17,15 @@ def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> dict:
         username: str = payload.get("sub")
 
         if username is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         
         return payload
     except InvalidTokenError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 def require_admin(payload: dict = Depends(get_current_user_token_data)) -> bool:
     if not payload.get("is_admin"):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Privilégios insuficientes")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges")
     
     return True
 
@@ -42,4 +42,4 @@ async def login(request: LoginRequest, auth_service: AuthService = Depends(get_a
 async def register(request: RegisterRequest, is_admin: bool = Depends(require_admin), auth_service: AuthService = Depends(get_auth_service)):
     await auth_service.register_new_user(request.username, request.password, current_user_is_admin=is_admin)
     
-    return {"message": "Usuário criado com sucesso"}
+    return {"message": "User successfully created"}

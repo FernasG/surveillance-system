@@ -1,6 +1,6 @@
 import numpy as np
+from typing import Literal
 from pydantic import BaseModel, Field
-from typing import Literal, Union
 from dataclasses import dataclass
 from pydantic_settings import BaseSettings
 
@@ -35,6 +35,19 @@ class VLMMessage:
 
 class Query(BaseModel):
     text: str = Field(min_length=3)
+
+class User(BaseModel):
+    username: str
+    hashed_password: str
+    is_admin: bool = False
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
 
 class Settings(BaseSettings):
     env: str

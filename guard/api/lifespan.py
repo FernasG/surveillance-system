@@ -12,6 +12,9 @@ async def app_lifespan(app: FastAPI):
     
     await container.initialize()
     
-    yield {"retrieval_service": container.retrieval_service}
+    yield {
+        "retrieval_service": container.retrieval_service,
+        "auth_service": container.auth_service
+    }
 
     await container.shutdown()

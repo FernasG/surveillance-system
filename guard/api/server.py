@@ -7,6 +7,7 @@ from guard.api.middlewares import RequestIdMiddleware
 from guard.infrastructure.logging.logger_config import setup_logging
 from guard.pipeline.retrieval.retrieval_service import RetrievalService
 from guard.core.entities import Settings
+from guard.api.routers.auth_router import router as auth_router
 
 settings = Settings()
 
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(auth_router)
 
 def get_retrieval_service(request: Request) -> RetrievalService:
     return request.state.retrieval_service

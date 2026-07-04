@@ -3,16 +3,17 @@ from jwt.exceptions import InvalidTokenError
 from fastapi import APIRouter, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
+from guard.core.entities import Settings
 from guard.core.entities import LoginRequest, RegisterRequest
-from guard.infrastructure.security import SECRET_KEY, ALGORITHM
-from guard.pipeline.auth.auth_service import AuthService
+from guard.core.services.auth_service import AuthService
 
 router = APIRouter(tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+settings = Settings()
 
 def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         username: str = payload.get("sub")
 
         if username is None:

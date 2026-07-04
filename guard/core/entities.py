@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     redis_queue_name: str
     ollama_api_url: str
     ollama_model_name: str
+    access_token_expire_minutes: float
+    secret_key: str
+    algorithm: str
 
     class Config:
         env_file = ".env"

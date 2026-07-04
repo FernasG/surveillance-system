@@ -22,9 +22,6 @@ class AuthService:
     async def authenticate_user(self, username: str, password: str) -> str:
         user = await self.repo.get_user(username)
 
-        print(user)
-        # print(f"DEBUG LOGIN - Senha digitada: {password} | Hash do banco: {user.hashed_password}")
-
         if not user or not verify_password(password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

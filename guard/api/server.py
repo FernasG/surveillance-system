@@ -1,13 +1,12 @@
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from guard.core.entities import Query
 from guard.api.lifespan import app_lifespan
 from guard.api.middlewares import RequestIdMiddleware
 from guard.infrastructure.logging.logger_config import setup_logging
-from guard.pipeline.retrieval.retrieval_service import RetrievalService
 from guard.core.entities import Settings
 from guard.api.routers.auth_router import router as auth_router
+from guard.api.routers.search_router import router as search_router
 
 settings = Settings()
 
@@ -24,15 +23,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(auth_router)
 
-def get_retrieval_service(request: Request) -> RetrievalService:
-    return request.state.retrieval_service
+app.include_router(auth_router)
+app.include_router(search_router)
 
 @app.get("/healthcheck")
 async def healthcheck():
     return {"status": "OK"}
-
-@app.post("/query")
-async def query(query: Query, retrieval_service: RetrievalService = Depends(get_retrieval_service)):
-    return retrieval_service.search_by_text(query.text)

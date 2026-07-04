@@ -14,7 +14,7 @@ from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 from guard.pipeline.preprocessing.mog2_frame_sampler import MOG2FrameSampler
 from guard.pipeline.preprocessing.preprocessor_service import PreprocessorService
 from guard.infrastructure.database.redis_store import RedisStore
-from guard.pipeline.auth.auth_service import AuthService
+from guard.core.services.auth_service import AuthService
 
 class ApplicationContainer:
     def __init__(self, settings: Settings):

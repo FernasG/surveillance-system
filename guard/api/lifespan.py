@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from guard.core.entities import Settings
-from guard.infrastructure.container import ApplicationContainer
+from guard.infrastructure.di.container import ApplicationContainer
 
 settings = Settings()
 

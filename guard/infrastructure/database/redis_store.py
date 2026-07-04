@@ -11,8 +11,6 @@ class RedisStore(IAuthRepository):
     async def get_user(self, username: str) -> Optional[User]:
         data = await self.redis.hgetall(f"user:{username}")
 
-        print(data, username)
-
         if not data:
             return None
         

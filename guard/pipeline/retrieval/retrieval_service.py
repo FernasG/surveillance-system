@@ -23,8 +23,6 @@ class RetrievalService:
             query_vector = self.vectorizer.encode_text(text)
             search_result = self.store.search(query_vector, top_k=top_k)
 
-            print(search_result)
-
             metadatas = search_result.get("metadatas", [])
             documents = search_result.get("documents", [])
 

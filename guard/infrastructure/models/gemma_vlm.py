@@ -14,8 +14,6 @@ class GemmaVLM(VLMInterface):
 
         settings = Settings()
 
-        # self.api_url = settings.ollama_api_url
-        # self.model_name = settings.ollama_model_name
         self.api_url = "http://192.168.1.10:8082"
         self.model_name = "gemma4-e2b"
         self.request_timeout = 300
@@ -69,8 +67,6 @@ class GemmaVLM(VLMInterface):
             response_json = response.json()
 
             content = response_json["choices"][0]["message"]["content"].strip()
-
-            print(content)
             
             content = parse_json_markdown(content)
 

@@ -6,16 +6,15 @@ from guard.core.entities import Settings
 from guard.core.entities import VLMResponse, VLMMessage
 from guard.core.interfaces import VLMInterface
 from .utils.image_utils import pil_to_base64
-from .utils.json_parser import parse_json_markdown
 
-class GemmaVLM(VLMInterface):
+class QwenVLM(VLMInterface):
     def __init__(self):
         super().__init__()
 
         settings = Settings()
 
-        self.api_url = settings.generation_server_url
-        self.model_name = settings.generation_model
+        self.api_url = settings.image_server_url
+        self.model_name = settings.image_model
         self.request_timeout = 300
         self.model_temperature = 0.1
 
@@ -32,7 +31,7 @@ class GemmaVLM(VLMInterface):
                 continue
 
             content_list = [{"type": "text", "text": message.content}]
-            
+
             for img in images:
                 b64_str = pil_to_base64(img)
                 content_list.append({
@@ -68,8 +67,6 @@ class GemmaVLM(VLMInterface):
 
             content = response_json["choices"][0]["message"]["content"].strip()
             
-            content = parse_json_markdown(content)
-
             return VLMResponse(role="assistant", content=content)
         except requests.exceptions.RequestException as e:
             message = f"Error communicating with Ollama server: {str(e)}"

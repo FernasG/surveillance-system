@@ -1,0 +1,4 @@
+description: "Generates a single-sentence description for a video frame image."
+version: "1.0"
+template: |
+  Describe this video frame image in one simple sentence.

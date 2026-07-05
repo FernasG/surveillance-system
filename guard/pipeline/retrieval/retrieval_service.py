@@ -1,5 +1,6 @@
 import cv2
 from loguru import logger
+from typing import Optional
 from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface
@@ -14,7 +15,7 @@ class RetrievalService:
         self.vlm = vlm
 
     def search_by_text(self, text: str, top_k: int = 5):
-        log_context = { "text": text, "top_k": top_k }
+        log_context = {"text": text, "top_k": top_k}
         req_logger = logger.bind(queue_message=log_context)
 
         try:
@@ -27,6 +28,7 @@ class RetrievalService:
             documents = search_result.get("documents", [])
 
             if not metadatas or not metadatas[0]:
+                req_logger.info("No vectors found for the given query.")
                 return {"results": []}
 
             extracted_data = []
@@ -35,7 +37,7 @@ class RetrievalService:
                 elapsed_ms = metadata.get("elapsed_ms")
                 video_path = metadata.get("video_path")
 
-                if not elapsed_ms or not video_path:
+                if elapsed_ms is None or not video_path:
                     continue
 
                 extracted_data.append({
@@ -56,27 +58,20 @@ class RetrievalService:
 
             for eval_item in response.content:
                 idx = eval_item.get("index")
-                
+                confidence_score = eval_item.get("confidence_score", 0.0)
                 frame_context = next((item for item in extracted_data if item["index"] == idx), None)
                 
                 if frame_context is not None:
-                    frame_b64 = None
-
-                    try:
-                        cap = cv2.VideoCapture(frame_context["video_path"])
-                        cap.set(cv2.CAP_PROP_POS_MSEC, frame_context["elapsed_ms"])
-                        success, frame = cap.read()
-                        cap.release()
-                        if success and frame is not None:
-                            frame_b64 = cv2_to_base64(frame)
-                    except Exception as e:
-                        logger.warning(f"Could not extract final frame preview: {e}")
+                    frame_b64 = self._extract_frame_base64(
+                        frame_context["video_path"], 
+                        frame_context["elapsed_ms"]
+                    )
 
                     final_results.append({
                         "video_path": frame_context["video_path"],
                         "elapsed_ms": frame_context["elapsed_ms"],
-                        "confidence_score": eval_item.get("confidence_score", 0.0),
                         "description": frame_context["description"],
+                        "confidence_score": confidence_score,
                         "frame_base64": frame_b64
                     })
 
@@ -93,23 +88,36 @@ class RetrievalService:
             for data in extracted_data
         ])
 
-        prompt_text = (
-            f"You are a video surveillance AI assistant. I have provided {len(extracted_data)} distinct sequential frame descriptions extracted from a security camera feed.\n"
-            f"Carefully analyze ALL provided descriptions and evaluate how well each one matches this user search query: '{text}'\n\n"
-            f"Available Descriptions:\n"
-            f"{formatted_descriptions}\n\n"
-            f"For each item, provide a confidence score from 0.0 to 1.0. Lower your score if the description does not show a clear subject or is otherwise irrelevant.\n"
-            f"Respond strictly in this JSON format:\n"
-            f"[\n"
-            f"  {{\n"
-            f"    \"index\": 0,\n"
-            f"    \"confidence_score\": 0.0\n"
-            f"  }}\n"
-            f"]"
+        prompt_text = self.prompt_manager.build(
+            prompt_name="search_evaluation_text",
+            num_descriptions=len(extracted_data),
+            formatted_descriptions=formatted_descriptions,
+            user_query=text,
         )
 
-        messages: list[VLMMessage] = [
-            VLMMessage(role="user", content=prompt_text)
-        ]
+        messages: list[VLMMessage] = [VLMMessage(role="user", content=prompt_text)]
 
         return messages
+
+    def _extract_frame_base64(self, video_path: str, elapsed_ms: int) -> Optional[str]:
+        cap = cv2.VideoCapture(video_path)
+
+        try:
+            if not cap.isOpened():
+                logger.warning(f"Failed to open video file: {video_path}")
+                return None
+
+            cap.set(cv2.CAP_PROP_POS_MSEC, elapsed_ms)
+            success, frame = cap.read()
+
+            if success and frame is not None:
+                return cv2_to_base64(frame)
+            
+            logger.warning(f"Failed to read frame at {elapsed_ms}ms from {video_path}")
+
+            return None
+        except Exception as e:
+            logger.warning(f"Error extracting frame preview from {video_path}: {e}")
+            return None
+        finally:
+            cap.release()

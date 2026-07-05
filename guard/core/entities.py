@@ -58,8 +58,10 @@ class Settings(BaseSettings):
     redis_host: str
     redis_port: str
     redis_queue_name: str
-    ollama_api_url: str
-    ollama_model_name: str
+    generation_model: str
+    generation_server_url: str
+    image_model: str
+    image_server_url: str
     access_token_expire_minutes: float
     secret_key: str
     algorithm: str

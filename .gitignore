@@ -224,3 +224,6 @@ chroma_data/
 
 # Gemma Storage
 ollama/
+
+# Models
+*.gguf

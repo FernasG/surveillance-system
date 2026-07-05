@@ -2,6 +2,7 @@ import asyncio
 from redis import asyncio as aioredis
 
 from guard.core.entities import Settings
+from guard.infrastructure.models.qwen_vlm import QwenVLM
 from guard.infrastructure.models.gemma_vlm import GemmaVLM
 from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
 from guard.infrastructure.database.chromadb_store import ChromaDBStore
@@ -30,8 +31,9 @@ class ApplicationContainer:
         self.vectorizer = CLIPVectorizer()
         prompt_manager = PromptManager()
         sampler = MOG2FrameSampler()
-        vlm = GemmaVLM()
-        
+        gemma_vlm = GemmaVLM()
+        qwen_vlm = QwenVLM()
+
         self.redis_client = aioredis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
 
@@ -40,9 +42,9 @@ class ApplicationContainer:
         await self.auth_service.initialize_admin()
 
         acquisition_service = AcquisitionService()
-        inference_service = InferenceService(vectorizer=self.vectorizer, store=store)
+        inference_service = InferenceService(vectorizer=self.vectorizer, store=store, vlm=qwen_vlm, prompt_manager=prompt_manager)
         preprocessor_service = PreprocessorService(sampler=sampler)
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=vlm, prompt_manager=prompt_manager)
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager)
 
         queue_worker = RedisQueueWorker(
             self.redis_client, 

@@ -2,7 +2,6 @@
 
 apk add --no-cache wget
 
-
 echo "Checking Qwen models..."
 [ -f /models/Qwen3.5-0.8B-Q8_0.gguf ] || wget -O /models/Qwen3.5-0.8B-Q8_0.gguf https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/Qwen3.5-0.8B-Q8_0.gguf
 [ -f /models/Qwen3.5-0.8B-mmproj-F16.gguf ] || wget -O /models/Qwen3.5-0.8B-mmproj-F16.gguf https://huggingface.co/unsloth/Qwen3.5-0.8B-GGUF/resolve/main/mmproj-F16.gguf

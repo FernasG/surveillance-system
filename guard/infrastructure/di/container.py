@@ -9,7 +9,7 @@ from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 
-from guard.pipeline.retrieval.retrieval_service import RetrievalService
+from guard.core.services.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
 from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 from guard.infrastructure.database.redis_auth_store import RedisAuthStore

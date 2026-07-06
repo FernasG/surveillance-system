@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Literal
+from typing import Literal, List
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from pydantic_settings import BaseSettings
@@ -48,6 +48,13 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     username: str
     password: str
+
+class VideoItem(BaseModel):
+    video_name: str
+    thumbnail_url: str
+
+class VideoListResponse(BaseModel):
+    videos: List[VideoItem]
 
 class Settings(BaseSettings):
     env: str

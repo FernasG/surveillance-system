@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 from guard.core.entities import Query
 from guard.api.routers.auth_router import get_current_user_token_data
-from guard.pipeline.retrieval.retrieval_service import RetrievalService
+from guard.core.services.retrieval_service import RetrievalService
 
 router = APIRouter(tags=["Search / Retrieval"])
 

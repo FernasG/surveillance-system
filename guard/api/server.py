@@ -6,6 +6,7 @@ from guard.api.middlewares import RequestIdMiddleware
 from guard.infrastructure.logging.logger_config import setup_logging
 from guard.core.entities import Settings
 from guard.api.routers.auth_router import router as auth_router
+from guard.api.routers.video_router import router as video_router
 from guard.api.routers.search_router import router as search_router
 
 settings = Settings()
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(video_router)
 app.include_router(search_router)
 
 @app.get("/healthcheck")

@@ -1,8 +1,9 @@
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Header, Request, Response
+from fastapi import APIRouter, HTTPException, Depends, Request, Response, Query, Header
 from fastapi.responses import StreamingResponse
+from datetime import date
 
-from guard.core.entities import VideoListResponse, VideoItem
+from guard.core.entities import VideoItem, VideoListResponse
 from guard.core.services.video_service import VideoService
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
@@ -11,8 +12,21 @@ def get_video_service() -> VideoService:
     return VideoService()
 
 @router.get("/", response_model=VideoListResponse)
-async def list_videos(request: Request, service: VideoService = Depends(get_video_service)):
-    video_files = service.list_videos()
+async def list_videos(
+    request: Request, 
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    service: VideoService = Depends(get_video_service)
+):
+    video_files, total_items = service.list_videos(
+        page=page, 
+        size=size, 
+        start_date=start_date, 
+        end_date=end_date
+    )
+    
     base_url = str(request.base_url).rstrip("/")
     
     formatted_videos = [
@@ -22,7 +36,16 @@ async def list_videos(request: Request, service: VideoService = Depends(get_vide
         )
         for name in video_files
     ]
-    return {"videos": formatted_videos}
+    
+    total_pages = (total_items + size - 1) // size
+
+    return {
+        "videos": formatted_videos,
+        "total_items": total_items,
+        "page": page,
+        "size": size,
+        "total_pages": total_pages
+    }
 
 @router.get("/{video_name}")
 async def get_video_stream(video_name: str, range: Optional[str] = Header(None), service: VideoService = Depends(get_video_service)):

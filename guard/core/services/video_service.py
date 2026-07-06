@@ -1,9 +1,9 @@
 import os
 import cv2
 from pathlib import Path
-from typing import List
-from typing import Generator
+from typing import List, Tuple, Optional, Generator
 from functools import lru_cache
+from datetime import datetime, date
 from guard.core.entities import Settings
 
 class VideoService:
@@ -12,15 +12,46 @@ class VideoService:
 
         self.videos_dir = Path(settings.videos_dir)
 
-    def list_videos(self) -> List[str]:
+    def list_videos(
+        self, 
+        page: int = 1, 
+        size: int = 20, 
+        start_date: Optional[date] = None, 
+        end_date: Optional[date] = None
+    ) -> Tuple[List[str], int]:
         if not self.videos_dir.exists() or not self.videos_dir.is_dir():
-            return []
-            
+            return [], 0
+        
         valid_extensions = {".mp4", ".avi", ".mkv", ".mov"}
-        return [
-            file.name for file in self.videos_dir.iterdir() 
-            if file.is_file() and file.suffix.lower() in valid_extensions
-        ]
+        video_files_with_time = []
+
+        for file in self.videos_dir.iterdir():
+            if file.is_file() and file.suffix.lower() in valid_extensions:
+                timestamp = self._extract_timestamp(file.name)
+                
+                if timestamp is None:
+                    continue
+
+                video_date = datetime.fromtimestamp(timestamp).date()
+
+                if start_date and video_date < start_date:
+                    continue
+
+                if end_date and video_date > end_date:
+                    continue
+                    
+                video_files_with_time.append((file.name, timestamp))
+
+        video_files_with_time.sort(key=lambda x: x[1], reverse=True)
+
+        total_items = len(video_files_with_time)
+        
+        start_idx = (page - 1) * size
+        end_idx = start_idx + size
+        
+        paginated_files = [v[0] for v in video_files_with_time[start_idx:end_idx]]
+
+        return paginated_files, total_items
 
     def get_video_path(self, video_name: str) -> Path:
         video_path = self.videos_dir / video_name
@@ -75,3 +106,12 @@ class VideoService:
             raise RuntimeError("Error encoding image")
 
         return encoded_image.tobytes()
+    
+    def _extract_timestamp(self, filename: str) -> Optional[int]:
+        try:
+            name_without_ext = filename.rsplit('.', 1)[0]
+            timestamp_str = name_without_ext.split('_')[-1]
+
+            return int(timestamp_str)
+        except (IndexError, ValueError):
+            return None

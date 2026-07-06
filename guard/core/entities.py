@@ -55,6 +55,10 @@ class VideoItem(BaseModel):
 
 class VideoListResponse(BaseModel):
     videos: List[VideoItem]
+    page: int
+    size: int
+    total_items: int
+    total_pages: int
 
 class Settings(BaseSettings):
     env: str

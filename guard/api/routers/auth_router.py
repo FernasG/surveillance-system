@@ -8,10 +8,21 @@ from guard.core.entities import LoginRequest, RegisterRequest
 from guard.core.services.auth_service import AuthService
 
 router = APIRouter(tags=["Authentication"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login", auto_error=False)
 settings = Settings()
 
-def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> dict:
+def get_token(request: Request, header_token: str = Depends(oauth2_scheme)) -> str:
+    if header_token:
+        return header_token
+        
+    query_token = request.query_params.get("token")
+
+    if query_token:
+        return query_token
+        
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+def get_current_user_token_data(token: str = Depends(get_token)) -> dict:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
         username: str = payload.get("sub")

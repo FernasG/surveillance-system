@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request, Response, Query,
 from fastapi.responses import StreamingResponse
 from datetime import date
 
+from guard.api.routers.auth_router import get_current_user_token_data
 from guard.core.entities import VideoItem, VideoListResponse
 from guard.core.services.video_service import VideoService
 
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/videos", tags=["Videos"])
 def get_video_service() -> VideoService:
     return VideoService()
 
-@router.get("/", response_model=VideoListResponse)
+@router.get("/", response_model=VideoListResponse, dependencies=[Depends(get_current_user_token_data)])
 async def list_videos(
     request: Request, 
     page: int = Query(1, ge=1),
@@ -47,7 +48,7 @@ async def list_videos(
         "total_pages": total_pages
     }
 
-@router.get("/{video_name}")
+@router.get("/{video_name}", dependencies=[Depends(get_current_user_token_data)])
 async def get_video_stream(video_name: str, range: Optional[str] = Header(None), service: VideoService = Depends(get_video_service)):
     try:
         video_path = service.get_video_path(video_name)
@@ -90,7 +91,7 @@ async def get_video_stream(video_name: str, range: Optional[str] = Header(None),
         headers=headers
     )
 
-@router.get("/{video_name}/thumbnail")
+@router.get("/{video_name}/thumbnail", dependencies=[Depends(get_current_user_token_data)])
 async def get_video_thumbnail(video_name: str, service: VideoService = Depends(get_video_service)):
     try:
         image_bytes = service.extract_frame_as_jpeg(video_name)

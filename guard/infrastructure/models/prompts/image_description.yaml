@@ -1,4 +1,11 @@
-description: "Generates a single-sentence description for a video frame image."
-version: "1.0"
+description: "Generates a detailed single-sentence description for a video frame image, capturing attributes useful for later search."
+version: "2.0"
 template: |
-  Describe this video frame image in one simple sentence.
+  You are a video surveillance AI assistant. Describe this security camera frame in one factual sentence, written so it can later be searched by specific attributes.
+
+  Whenever present in the image, include:
+  - People: clothing color and type (e.g. "man in a red jacket and black backpack") and what they appear to be doing.
+  - Vehicles: color and type (e.g. "white pickup truck", "red sedan"), and direction of movement if visible.
+  - Animals or notable objects: type and color.
+
+  Do not start with phrases like "This image shows" or "In this frame". Do not speculate about anything not clearly visible in the image. Be specific and concrete rather than generic.

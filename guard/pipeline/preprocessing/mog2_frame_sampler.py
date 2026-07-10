@@ -8,9 +8,11 @@ class MOG2FrameSampler(VideoFrameSampler):
 
         self.subtractor = cv2.createBackgroundSubtractorMOG2(history=100, varThreshold=50, detectShadows=True)
         self.kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+        self.DEFAULT_FPS = 30
 
     def get_frames(self, message: QueueMessage, video: cv2.VideoCapture) -> list[VideoFrame]:
-        fps = video.get(cv2.CAP_PROP_FPS)
+        raw_fps = video.get(cv2.CAP_PROP_FPS)
+        fps = int(round(raw_fps)) if raw_fps > 0 else self.DEFAULT_FPS
         frames: list[VideoFrame] = []
 
         frame_count = 0

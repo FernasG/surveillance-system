@@ -14,6 +14,7 @@ class InferenceService:
         self.store = store
         self.vlm = vlm
         self.BATCH_SIZE = 8
+        self.TARGET_SIZE = 640
 
     def inferer(self, frames: list[VideoFrame]):
         req_logger = logger.bind(frames_count=len(frames))
@@ -54,7 +55,11 @@ class InferenceService:
             return "Description unavailable"
 
     def _setup_vlm_params(self, frame: np.ndarray) -> tuple[list[VLMMessage], list[Image.Image]]:
-        small_frame = cv2.resize(frame, (448, 448), interpolation=cv2.INTER_AREA)
+        height, width, _ = frame.shape
+        scale = self.TARGET_SIZE / max(width, height)
+        new_w, new_h = int(width * scale), int(height * scale)
+
+        small_frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
         rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
         pil_img = Image.fromarray(rgb_frame)
 

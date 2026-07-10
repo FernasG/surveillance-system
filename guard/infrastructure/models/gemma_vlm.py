@@ -6,7 +6,6 @@ from guard.core.entities import Settings
 from guard.core.entities import VLMResponse, VLMMessage
 from guard.core.interfaces import VLMInterface
 from .utils.image_utils import pil_to_base64
-from .utils.json_parser import parse_json_markdown
 
 class GemmaVLM(VLMInterface):
     def __init__(self):
@@ -67,8 +66,6 @@ class GemmaVLM(VLMInterface):
             response_json = response.json()
 
             content = response_json["choices"][0]["message"]["content"].strip()
-            
-            content = parse_json_markdown(content)
 
             return VLMResponse(role="assistant", content=content)
         except requests.exceptions.RequestException as e:

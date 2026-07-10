@@ -1,17 +1,15 @@
-description: "Evaluates the similarity between video frame descriptions and a user query."
-version: "1.0"
+description: "Evaluates how well video frame descriptions match a user query."
+version: "2.0"
 template: |
-  You are a video surveillance AI assistant. I have provided {num_descriptions} distinct sequential frame descriptions extracted from a security camera feed.
-  Carefully analyze ALL provided descriptions and evaluate how well each one matches this user search query: '{user_query}'
+  Compare the following frame descriptions to the user query: '{user_query}'
 
-  Available Descriptions:
+  Descriptions:
   {formatted_descriptions}
 
-  For each item, provide a confidence score from 0.0 to 1.0. Lower your score if the description does not show a clear subject or is otherwise irrelevant.
-  Respond strictly in this JSON format:
-  [
-    {{
-      "index": 0,
-      "confidence_score": 0.0
-    }}
-  ]
+  Rate how well each description matches the query from 0 to 10.
+  Output ONLY the index and the score separated by a hyphen, one per line. Do not write any other text.
+
+  Example format:
+  0-10
+  1-5
+  2-0

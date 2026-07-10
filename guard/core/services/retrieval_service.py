@@ -1,3 +1,4 @@
+import re
 import cv2
 from loguru import logger
 from typing import Optional
@@ -54,26 +55,28 @@ class RetrievalService:
 
             response = self.vlm.generate(messages)
 
+            eval_scores = self._parse_eval_scores(response.content)
+
             final_results = []
 
-            for eval_item in response.content:
-                idx = eval_item.get("index")
-                confidence_score = eval_item.get("confidence_score", 0.0)
-                frame_context = next((item for item in extracted_data if item["index"] == idx), None)
-                
-                if frame_context is not None:
-                    frame_b64 = self._extract_frame_base64(
-                        frame_context["video_path"], 
-                        frame_context["elapsed_ms"]
-                    )
+            for frame_context in extracted_data:
+                if frame_context["index"] not in eval_scores:
+                    continue
 
-                    final_results.append({
-                        "video_path": frame_context["video_path"],
-                        "elapsed_ms": frame_context["elapsed_ms"],
-                        "description": frame_context["description"],
-                        "confidence_score": confidence_score,
-                        "frame_base64": frame_b64
-                    })
+                confidence_score = eval_scores[frame_context["index"]] / 10.0
+
+                frame_b64 = self._extract_frame_base64(
+                    frame_context["video_path"],
+                    frame_context["elapsed_ms"]
+                )
+
+                final_results.append({
+                    "video_path": frame_context["video_path"],
+                    "elapsed_ms": frame_context["elapsed_ms"],
+                    "description": frame_context["description"],
+                    "confidence_score": confidence_score,
+                    "frame_base64": frame_b64
+                })
 
             final_results = sorted(final_results, key=lambda x: x["confidence_score"], reverse=True)
 
@@ -98,6 +101,20 @@ class RetrievalService:
         messages: list[VLMMessage] = [VLMMessage(role="user", content=prompt_text)]
 
         return messages
+
+    def _parse_eval_scores(self, content: str) -> dict[int, float]:
+        scores = {}
+
+        for line in content.strip().splitlines():
+            match = re.match(r"^\s*(\d+)\s*-\s*(\d+(?:\.\d+)?)\s*$", line)
+
+            if not match:
+                continue
+
+            idx, score = match.groups()
+            scores[int(idx)] = float(score)
+
+        return scores
 
     def _extract_frame_base64(self, video_path: str, elapsed_ms: int) -> Optional[str]:
         cap = cv2.VideoCapture(video_path)

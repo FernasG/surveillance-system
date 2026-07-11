@@ -42,11 +42,7 @@ class VectorStoreInterface(ABC):
 
 class CameraDriver(ABC):
     @abstractmethod
-    def start_recording(self, segment_time: int, folder_path: str):
-        pass
-
-    @abstractmethod
-    def stop_recording(self):
+    def stream(self):
         pass
 
 class IAuthRepository(ABC):

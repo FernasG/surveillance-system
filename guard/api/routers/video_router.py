@@ -4,13 +4,18 @@ from fastapi.responses import StreamingResponse
 from datetime import date
 
 from guard.api.routers.auth_router import get_current_user_token_data
+from guard.core.interfaces import CameraDriver
 from guard.core.entities import VideoItem, VideoListResponse
 from guard.core.services.video_service import VideoService
+from guard.infrastructure.drivers.usb_camera_driver import LogitechUSBDriver
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
 def get_video_service() -> VideoService:
     return VideoService()
+
+def get_camera_driver() -> CameraDriver:
+    return LogitechUSBDriver(device_path="/dev/video0")
 
 @router.get("/", response_model=VideoListResponse, dependencies=[Depends(get_current_user_token_data)])
 async def list_videos(
@@ -48,8 +53,12 @@ async def list_videos(
         "total_pages": total_pages
     }
 
-@router.get("/{video_name}", dependencies=[Depends(get_current_user_token_data)])
-async def get_video_stream(video_name: str, range: Optional[str] = Header(None), service: VideoService = Depends(get_video_service)):
+@router.get("/live", dependencies=[Depends(get_current_user_token_data)])
+async def stream_live_camera(camera_driver: CameraDriver = Depends(get_camera_driver)):
+    return StreamingResponse(camera_driver.stream(), media_type="multipart/x-mixed-replace; boundary=frame")
+
+@router.get("/{video_name}/playback", dependencies=[Depends(get_current_user_token_data)])
+async def stream_recorded_video(video_name: str, range: Optional[str] = Header(None), service: VideoService = Depends(get_video_service)):
     try:
         video_path = service.get_video_path(video_name)
     except FileNotFoundError as e:

@@ -1,37 +1,40 @@
-import ffmpeg
-import os
+import cv2
+from loguru import logger
 from guard.core.interfaces import CameraDriver
 
 class LogitechUSBDriver(CameraDriver):
     def __init__(self, device_path="/dev/video0"):
         self.device_path = device_path
-        self.process = None
 
-    def start_recording(self, segment_time: int, folder_path: str):
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+    def stream(self):
+        req_logger = logger.bind(device_path=self.device_path)
 
-        file_template = os.path.join(folder_path, "cam1_%s.mp4")
+        cap = cv2.VideoCapture(self.device_path)
+        
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-        v_in = ffmpeg.input(
-            self.device_path,
-            f="v4l2",
-            input_format="mjpeg",
-            video_size="1280x720",
-            framerate="30"
-        )
+        if not cap.isOpened():
+            req_logger.error("Error opening the camera")
 
-        self.process = (
-            ffmpeg.output(
-                v_in, file_template,
-                vcodec="libx264", preset="veryfast", pix_fmt="yuv420p",
-                acodec="aac", f="segment", segment_time=segment_time,
-                reset_timestamps=1, segment_format="mp4", strftime=1
-            )
-            .overwrite_output()
-            .run_async(pipe_stdin=True)
-        )
+            return
 
-    def stop_recording(self):
-        if self.process:
-            self.process.communicate(input=b"q")
+        try:
+            while True:
+                success, frame = cap.read()
+
+                if not success:
+                    req_logger.warning("Error reading the camera frame")
+                    break
+
+                ret, buffer = cv2.imencode(".jpg", frame)
+                
+                if not ret:
+                    continue
+                
+                frame_bytes = buffer.tobytes()
+
+                yield (b"--frame\r\n"
+                       b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n")
+        finally:
+            cap.release()

@@ -25,6 +25,8 @@ services:
       - redis
       - qwen-api
       - gemma-api
+    devices:
+      - "/dev/video0:/dev/video0"
     networks:
       - guard-network
 

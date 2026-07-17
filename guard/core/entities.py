@@ -33,6 +33,12 @@ class VLMMessage:
     role: Literal["user", "assistant", "system"]
     content: str
 
+@dataclass
+class DetectionObject:
+    class_id: int
+    class_name: str
+    confidence: float
+
 class Query(BaseModel):
     text: str = Field(min_length=3)
 

@@ -8,6 +8,7 @@ from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
 from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
+from guard.infrastructure.models.yolo_detector import YOLODetector
 
 from guard.core.services.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
@@ -30,6 +31,7 @@ class ApplicationContainer:
     async def initialize(self):
         self.vectorizer = CLIPVectorizer()
         prompt_manager = PromptManager()
+        yolo_detector = YOLODetector()
         sampler = MOG2FrameSampler()
         gemma_vlm = GemmaVLM()
         qwen_vlm = QwenVLM()
@@ -42,8 +44,11 @@ class ApplicationContainer:
         await self.auth_service.initialize_admin()
 
         acquisition_service = AcquisitionService()
-        inference_service = InferenceService(vectorizer=self.vectorizer, store=store, vlm=qwen_vlm, prompt_manager=prompt_manager)
         preprocessor_service = PreprocessorService(sampler=sampler)
+        inference_service = InferenceService(
+            vectorizer=self.vectorizer, object_detector=yolo_detector,
+            store=store, vlm=qwen_vlm, prompt_manager=prompt_manager
+        )
         self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager)
 
         queue_worker = RedisQueueWorker(

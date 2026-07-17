@@ -13,5 +13,6 @@ pydantic==2.13.4
 pydantic-settings==2.14.1
 python-multipart==0.0.32
 redis==7.4.0
+ultralytics==8.4.97
 uuid==1.30
 loguru==0.7.3

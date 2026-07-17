@@ -23,18 +23,16 @@ class RetrievalService:
             req_logger.info("Starting Text-Based RAG Query")
 
             query_vector = self.vectorizer.encode_text(text)
-            search_result = self.store.search(query_vector, top_k=top_k)
+            search_result = self.store.search(query_vector, top_events=top_k)
 
-            metadatas = search_result.get("metadatas", [])
-            documents = search_result.get("documents", [])
-
-            if not metadatas or not metadatas[0]:
+            if not search_result:
                 req_logger.info("No vectors found for the given query.")
                 return {"results": []}
 
             extracted_data = []
 
-            for idx, (metadata, doc_description) in enumerate(zip(metadatas[0], documents[0])):
+            for idx, event_data in enumerate(search_result):
+                metadata = event_data.get("metadata", {})
                 elapsed_ms = metadata.get("elapsed_ms")
                 video_path = metadata.get("video_path")
 
@@ -43,27 +41,30 @@ class RetrievalService:
 
                 extracted_data.append({
                     "index": idx,
+                    "uuid": event_data.get("frame_id"),
+                    "event_id": event_data.get("event_id"),
                     "video_path": video_path,
                     "elapsed_ms": elapsed_ms,
-                    "description": doc_description
+                    "description": event_data.get("description", "Description unavailable")
                 })
 
             if not extracted_data:
                 return {"results": []}
             
             messages = self._setup_gemma_params(text, extracted_data)
-
             response = self.vlm.generate(messages)
-
             eval_scores = self._parse_eval_scores(response.content)
 
             final_results = []
 
             for frame_context in extracted_data:
-                if frame_context["index"] not in eval_scores:
-                    continue
-
-                confidence_score = eval_scores[frame_context["index"]] / 10.0
+                idx = frame_context["index"]
+                
+                if idx in eval_scores:
+                    confidence_score = eval_scores[idx] / 10.0
+                else:
+                    req_logger.warning(f"VLM missing score for index {idx}. Applying fallback score.")
+                    confidence_score = max(0.1, 0.5 - (idx * 0.05))
 
                 frame_b64 = self._extract_frame_base64(
                     frame_context["video_path"],
@@ -71,10 +72,12 @@ class RetrievalService:
                 )
 
                 final_results.append({
+                    "uuid": frame_context["uuid"],
+                    "event_id": frame_context["event_id"],
                     "video_path": frame_context["video_path"],
                     "elapsed_ms": frame_context["elapsed_ms"],
                     "description": frame_context["description"],
-                    "confidence_score": confidence_score,
+                    "confidence_score": round(confidence_score, 3),
                     "frame_base64": frame_b64
                 })
 
@@ -99,7 +102,6 @@ class RetrievalService:
         )
 
         messages: list[VLMMessage] = [VLMMessage(role="user", content=prompt_text)]
-
         return messages
 
     def _parse_eval_scores(self, content: str) -> dict[int, float]:
@@ -129,7 +131,7 @@ class RetrievalService:
 
             if success and frame is not None:
                 return cv2_to_base64(frame)
-            
+
             logger.warning(f"Failed to read frame at {elapsed_ms}ms from {video_path}")
 
             return None

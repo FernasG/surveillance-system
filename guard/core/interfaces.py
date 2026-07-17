@@ -40,6 +40,11 @@ class VectorStoreInterface(ABC):
     def search(self, query_vector: list[float], top_events: int = 5, fetch_multiplier: int = 10) -> list[dict]:
         pass
 
+class AnalyticsStoreInterface(ABC):
+    @abstractmethod
+    def save_event_analytics(self, event_id: str, objects_detected: str, timestamp: str) -> None:
+        pass
+
 class ObjectDetector(ABC):
     @abstractmethod
     def detect(self, frame: np.ndarray) -> list[DetectionObject]:

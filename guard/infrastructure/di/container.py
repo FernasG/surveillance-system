@@ -4,19 +4,22 @@ from redis import asyncio as aioredis
 from guard.core.entities import Settings
 from guard.infrastructure.models.qwen_vlm import QwenVLM
 from guard.infrastructure.models.gemma_vlm import GemmaVLM
-from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
-from guard.infrastructure.database.chromadb_store import ChromaDBStore
-from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
-from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.infrastructure.models.yolo_detector import YOLODetector
+from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
+from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
+from guard.infrastructure.database.chromadb_store import ChromaDBStore
+from guard.infrastructure.database.sqlite_analytics_store import SqliteAnalyticsStore
+from guard.infrastructure.models.utils.prompt_manager import PromptManager
+from guard.infrastructure.database.sqlite_auth_store import SqliteAuthStore
+from guard.infrastructure.database.sqlite_store import SqliteDatabase
 
 from guard.core.services.retrieval_service import RetrievalService
 from guard.pipeline.inference.inference_service import InferenceService
-from guard.pipeline.acquisition.acquisition_service import AcquisitionService
-from guard.infrastructure.database.redis_auth_store import RedisAuthStore
 from guard.pipeline.preprocessing.mog2_frame_sampler import MOG2FrameSampler
+from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 from guard.pipeline.preprocessing.preprocessor_service import PreprocessorService
 from guard.core.services.auth_service import AuthService
+from guard.core.services.analytics_service import AnalyticsService
 
 class ApplicationContainer:
     def __init__(self, settings: Settings):
@@ -24,6 +27,7 @@ class ApplicationContainer:
         
         self.vectorizer = None
         self.redis_client = None
+        self.analytics_service = None
         self.auth_service = None
         self.retrieval_service = None
         self._worker_task = None
@@ -35,19 +39,24 @@ class ApplicationContainer:
         sampler = MOG2FrameSampler()
         gemma_vlm = GemmaVLM()
         qwen_vlm = QwenVLM()
-
+        
         self.redis_client = aioredis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
 
-        auth_repo = RedisAuthStore(self.redis_client)
+        database = SqliteDatabase()
+        auth_repo = SqliteAuthStore(database)
         self.auth_service = AuthService(auth_repo)
         await self.auth_service.initialize_admin()
+
+        analytics_repo = SqliteAnalyticsStore(database)
+        self.analytics_service = AnalyticsService(analytics_repo)
 
         acquisition_service = AcquisitionService()
         preprocessor_service = PreprocessorService(sampler=sampler)
         inference_service = InferenceService(
             vectorizer=self.vectorizer, object_detector=yolo_detector,
-            store=store, vlm=qwen_vlm, prompt_manager=prompt_manager
+            store=store, vlm=qwen_vlm, prompt_manager=prompt_manager,
+            analytics_store=analytics_repo
         )
         self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager)
 

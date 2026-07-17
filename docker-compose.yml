@@ -23,7 +23,8 @@ services:
     depends_on:
       - chromadb
       - redis
-      - qwen-api
+      # - qwen-api
+      - liquid-api
       - gemma-api
     devices:
       - "/dev/video0:/dev/video0"
@@ -58,18 +59,36 @@ services:
     networks:
       - guard-network
 
-  qwen-api:
+  # qwen-api:
+  #   build:
+  #     context: ./llama.cpp
+  #     dockerfile: Dockerfile
+  #   image: custom-llama-cpp:latest
+  #   container_name: qwen-api
+  #   ports:
+  #     - "8081:8081"
+  #   volumes:
+  #     - ./llama.cpp/models:/models
+  #     - ./llama.cpp/scripts:/scripts
+  #   entrypoint: ["/bin/sh", "/scripts/start_qwen.sh"]
+  #   depends_on:
+  #     llama-downloader:
+  #       condition: service_completed_successfully
+  #   networks:
+  #     - guard-network
+
+  liquid-api:
     build:
       context: ./llama.cpp
       dockerfile: Dockerfile
     image: custom-llama-cpp:latest
-    container_name: qwen-api
+    container_name: liquid-api
     ports:
       - "8081:8081"
     volumes:
       - ./llama.cpp/models:/models
       - ./llama.cpp/scripts:/scripts
-    entrypoint: ["/bin/sh", "/scripts/start_qwen.sh"]
+    entrypoint: ["/bin/sh", "/scripts/start_liquid.sh"]
     depends_on:
       llama-downloader:
         condition: service_completed_successfully

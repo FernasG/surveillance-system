@@ -3,10 +3,12 @@ import uuid
 import numpy as np
 from PIL import Image
 from loguru import logger
+from datetime import datetime, timezone
 
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface, ObjectDetector
 from guard.core.entities import VideoFrame, VLMMessage
+from guard.core.interfaces import AnalyticsStoreInterface
 
 class InferenceService:
     def __init__(
@@ -14,10 +16,12 @@ class InferenceService:
         vectorizer: VectorizerInterface,
         prompt_manager: PromptManager,
         object_detector: ObjectDetector,
+        analytics_store: AnalyticsStoreInterface,
         store: VectorStoreInterface,
         vlm: VLMInterface,
     ):
         self.object_detector = object_detector
+        self.analytics_store = analytics_store
         self.prompt_manager = prompt_manager
         self.vectorizer = vectorizer
         self.store = store
@@ -88,6 +92,12 @@ class InferenceService:
                         self.active_track_ids = current_track_ids
 
                         self.current_event_description = self._get_image_description(frame)
+
+                        self.analytics_store.save_event_analytics(
+                            event_id=self.current_event_id,
+                            objects_detected=detected_str,
+                            timestamp=self._get_event_timestamp(frame)
+                        )
                     else:
                         self.event_centroid = (self.ALPHA_EMA * current_vector) + ((1.0 - self.ALPHA_EMA) * self.event_centroid)
                         self.event_centroid = self.event_centroid / np.linalg.norm(self.event_centroid)
@@ -112,6 +122,11 @@ class InferenceService:
         except Exception:
             req_logger.exception("Failed to execute inference or save vector batches")
             raise
+
+    def _get_event_timestamp(self, frame: VideoFrame) -> str:
+        event_epoch_seconds = frame.timestamp + (frame.elapsed_ms / 1000.0)
+
+        return datetime.fromtimestamp(event_epoch_seconds, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     def _get_image_description(self, frame: VideoFrame) -> str:
         try:

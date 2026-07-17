@@ -19,7 +19,8 @@ class VideoSegmentHandler(FileSystemEventHandler):
             file_name = os.path.basename(file_path)
             
             try:
-                parts = file_name.split('_')
+                name_without_ext = os.path.splitext(file_name)[0]
+                parts = name_without_ext.split('_')
                 timestamp = int(parts[1]) if len(parts) > 1 else int(time.time())
             except (ValueError, IndexError):
                 timestamp = int(time.time())
@@ -35,8 +36,10 @@ class VideoSegmentHandler(FileSystemEventHandler):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     path_to_watch = os.environ.get("VIDEOS_DIR", "/app/videos")
-    
+
     event_handler = VideoSegmentHandler()
     observer = Observer()
     observer.schedule(event_handler, path_to_watch, recursive=False)

@@ -3,6 +3,7 @@ opencv-python-headless>=4.13.0.92,<5.0.0.0
 torch==2.11.0
 fastapi==0.136.1
 ffmpeg-python==0.2.0
+lap>=0.5.12
 PyJWT==2.13.0
 uvicorn==0.46.0
 torchvision==0.26.0

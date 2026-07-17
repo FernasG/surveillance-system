@@ -14,6 +14,7 @@ async def app_lifespan(app: FastAPI):
     
     yield {
         "retrieval_service": container.retrieval_service,
+        "analytics_service": container.analytics_service,
         "auth_service": container.auth_service
     }
 

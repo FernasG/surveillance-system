@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from typing import Optional
 from abc import ABC, abstractmethod
-from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage, User, DetectionObject
+from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage, User
 
 class VideoFrameSampler(ABC):
     @abstractmethod
@@ -47,11 +47,7 @@ class AnalyticsStoreInterface(ABC):
 
 class ObjectDetector(ABC):
     @abstractmethod
-    def detect(self, frame: np.ndarray) -> list[DetectionObject]:
-        pass
-
-    @abstractmethod
-    def track(self, frame: np.ndarray) -> tuple[set[int], str]:
+    def detect(self, frame: np.ndarray) -> str:
         pass
 
 class CameraDriver(ABC):

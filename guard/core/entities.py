@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Literal, List
+from typing import Literal, List, Optional, Tuple
 from pydantic import BaseModel, Field
 from dataclasses import dataclass
 from pydantic_settings import BaseSettings
@@ -11,6 +11,7 @@ class VideoFrame:
     elapsed_ms: int
     frame_index: int
     data: np.ndarray
+    motion_bbox: Optional[Tuple[int, int, int, int]] = None
 
 @dataclass
 class VectorEmbedding:
@@ -32,12 +33,6 @@ class VLMResponse:
 class VLMMessage:
     role: Literal["user", "assistant", "system"]
     content: str
-
-@dataclass
-class DetectionObject:
-    class_id: int
-    class_name: str
-    confidence: float
 
 class Query(BaseModel):
     text: str = Field(min_length=3)

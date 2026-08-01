@@ -35,19 +35,27 @@ class MOG2FrameSampler(VideoFrameSampler):
 
             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            valid = False
+            motion_bbox = None
 
             for cnt in contours:
                 if cv2.contourArea(cnt) > 2000:
-                    valid = True
-                    break
+                    x, y, w, h = cv2.boundingRect(cnt)
 
-            if valid:
+                    if motion_bbox is None:
+                        motion_bbox = [x, y, x + w, y + h]
+                    else:
+                        motion_bbox[0] = min(motion_bbox[0], x)
+                        motion_bbox[1] = min(motion_bbox[1], y)
+                        motion_bbox[2] = max(motion_bbox[2], x + w)
+                        motion_bbox[3] = max(motion_bbox[3], y + h)
+
+            if motion_bbox is not None:
                 video_frame = VideoFrame(
                     timestamp=message.timestamp,
                     frame_index=frame_count,
                     video_path=message.video_path,
                     elapsed_ms=int((frame_count / fps) * 1000),
+                    motion_bbox=tuple(motion_bbox),
                     data=frame
                 )
 

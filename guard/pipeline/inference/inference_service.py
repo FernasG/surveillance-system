@@ -30,15 +30,17 @@ class InferenceService:
         self.BATCH_SIZE = 8
         self.TARGET_SIZE = 640
 
-        self.TIME_THRESHOLD_MS = 5000 
+        self.TIME_THRESHOLD_MS = 5000
         self.SIMILARITY_THRESHOLD = 0.82
         self.PEAK_ESSENCE_THRESHOLD = 0.94
         self.ALPHA_EMA = 0.30
+        self.SPATIAL_OVERLAP_THRESHOLD = 0.10
 
         self.current_event_id = None
         self.event_centroid = None
         self.event_frame_count = 0
         self.last_timestamp_ms = 0.0
+        self.active_motion_bbox = None
         self.current_event_description = "Description unavailable"
 
     def inferer(self, frames: list[VideoFrame]):
@@ -62,34 +64,31 @@ class InferenceService:
                     is_new_event = True
                     similarity = 0.0
 
-                    current_track_ids, detected_str = self.object_detector.track(frame.data)
+                    detected_str = self.object_detector.detect(frame.data)
+                    current_motion_bbox = getattr(frame, "motion_bbox", None)
 
                     if self.current_event_id is not None:
                         time_diff = current_time_ms - self.last_timestamp_ms
-                        
+
                         similarity = float(np.dot(current_vector, self.event_centroid))
 
                         if time_diff <= self.TIME_THRESHOLD_MS:
-                            has_common_tracks = bool(self.active_track_ids.intersection(current_track_ids))
-                            
                             has_semantic_continuity = similarity >= self.SIMILARITY_THRESHOLD
 
-                            if has_common_tracks:
+                            has_spatial_continuity = self._iou(
+                                current_motion_bbox, self.active_motion_bbox
+                            ) >= self.SPATIAL_OVERLAP_THRESHOLD
+
+                            if has_semantic_continuity or has_spatial_continuity:
                                 is_new_event = False
-                                self.active_track_ids.update(current_track_ids)
-                            elif len(current_track_ids) == 0 and len(self.active_track_ids) > 0:
-                                is_new_event = False
-                            elif has_semantic_continuity:
-                                is_new_event = False
-                                self.active_track_ids.update(current_track_ids)
 
                     if is_new_event:
                         self.current_event_id = str(uuid.uuid4())
                         req_logger.debug(f"New event detected: {self.current_event_id} at {current_time_ms}ms")
-                        
+
                         self.event_centroid = current_vector.copy()
                         self.highest_essence_score = 0.0
-                        self.active_track_ids = current_track_ids
+                        self.active_motion_bbox = current_motion_bbox
 
                         self.current_event_description = self._get_image_description(frame)
 
@@ -101,11 +100,12 @@ class InferenceService:
                     else:
                         self.event_centroid = (self.ALPHA_EMA * current_vector) + ((1.0 - self.ALPHA_EMA) * self.event_centroid)
                         self.event_centroid = self.event_centroid / np.linalg.norm(self.event_centroid)
+                        self.active_motion_bbox = current_motion_bbox
 
                         if similarity > self.PEAK_ESSENCE_THRESHOLD and similarity > self.highest_essence_score:
                             self.highest_essence_score = similarity
                             req_logger.info(f"Peak action found (sim: {similarity:.3f}). Refining VLM description.")
-                            
+
                             self.current_event_description = self._get_image_description(frame)
 
                     if vectors[idx].metadata is None:
@@ -122,6 +122,26 @@ class InferenceService:
         except Exception:
             req_logger.exception("Failed to execute inference or save vector batches")
             raise
+
+    def _iou(self, box_a: tuple, box_b: tuple) -> float:
+        if box_a is None or box_b is None:
+            return 0.0
+
+        ax1, ay1, ax2, ay2 = box_a
+        bx1, by1, bx2, by2 = box_b
+
+        inter_w = max(0, min(ax2, bx2) - max(ax1, bx1))
+        inter_h = max(0, min(ay2, by2) - max(ay1, by1))
+        inter_area = inter_w * inter_h
+
+        if inter_area == 0:
+            return 0.0
+
+        area_a = (ax2 - ax1) * (ay2 - ay1)
+        area_b = (bx2 - bx1) * (by2 - by1)
+        union_area = area_a + area_b - inter_area
+
+        return inter_area / union_area if union_area > 0 else 0.0
 
     def _get_event_timestamp(self, frame: VideoFrame) -> str:
         event_epoch_seconds = frame.timestamp + (frame.elapsed_ms / 1000.0)

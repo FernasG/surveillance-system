@@ -6,7 +6,8 @@ from typing import Optional
 from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface
-from guard.core.entities import Settings, VLMMessage, SEARCH_PRIORITY_CHANNEL
+from guard.core.exceptions import VLMGenerationError
+from guard.core.entities import Settings, VLMMessage, SEARCH_PRIORITY_CHANNEL, SEARCH_GATE_KEY, SEARCH_GATE_TTL_S
 
 class RetrievalService:
     def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface, prompt_manager: PromptManager, redis_client: redis.Redis):
@@ -55,13 +56,15 @@ class RetrievalService:
             
             messages = self._setup_gemma_params(text, extracted_data)
 
-            self._publish_search_priority("started")
+            self._enter_search()
             try:
                 response = self.vlm.generate(messages)
+                eval_scores = self._parse_eval_scores(response.content)
+            except VLMGenerationError as e:
+                req_logger.warning(f"VLM re-ranking unavailable, falling back to vector-rank scores: {e}")
+                eval_scores = {}
             finally:
-                self._publish_search_priority("finished")
-
-            eval_scores = self._parse_eval_scores(response.content)
+                self._exit_search()
 
             final_results = []
 
@@ -96,11 +99,26 @@ class RetrievalService:
             req_logger.critical(f"Something went really wrong {e}")
             return {"error": str(e), "results": []}
         
-    def _publish_search_priority(self, state: str) -> None:
+    def _enter_search(self) -> None:
         try:
-            self.redis_client.publish(SEARCH_PRIORITY_CHANNEL, state)
+            pipe = self.redis_client.pipeline()
+            pipe.incr(SEARCH_GATE_KEY)
+            pipe.expire(SEARCH_GATE_KEY, SEARCH_GATE_TTL_S)
+            pipe.publish(SEARCH_PRIORITY_CHANNEL, "started")
+            pipe.execute()
         except Exception as e:
-            logger.warning(f"Failed to publish search priority signal ({state}): {e}")
+            logger.warning(f"Failed to signal search start: {e}")
+
+    def _exit_search(self) -> None:
+        try:
+            remaining = self.redis_client.decr(SEARCH_GATE_KEY)
+
+            if remaining <= 0:
+                self.redis_client.delete(SEARCH_GATE_KEY)
+
+            self.redis_client.publish(SEARCH_PRIORITY_CHANNEL, "finished")
+        except Exception as e:
+            logger.warning(f"Failed to signal search finish: {e}")
 
     def _setup_gemma_params(self, text: str, extracted_data: list[dict]) -> list[VLMMessage]:
         formatted_descriptions = "\n".join([

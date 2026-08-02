@@ -17,8 +17,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY guard/requirements.txt /app/
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir git+https://github.com/openai/CLIP.git
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
 COPY guard/ ./guard/
 

@@ -17,17 +17,54 @@ services:
     volumes:
       - ./guard:/app/guard
       - ./videos:/app/videos
+      - ./data:/app/data
       - ./.env:/app/.env
     ports:
       - 3000:3000
     depends_on:
       - chromadb
-      - redis
-      # - qwen-api
-      - liquid-api
+      - clip-api
       - gemma-api
     devices:
       - "/dev/video0:/dev/video0"
+    networks:
+      - guard-network
+
+  guard-worker:
+    image: pi-guard:latest
+    build:
+      context: .
+      dockerfile: guard/Dockerfile
+    container_name: guard-worker
+    command: ["python", "-m", "guard.worker.main"]
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ./guard:/app/guard
+      - ./videos:/app/videos
+      - ./data:/app/data
+      - ./.env:/app/.env
+    depends_on:
+      - chromadb
+      - redis
+      - clip-api
+      # - qwen-api
+      - liquid-api
+    networks:
+      - guard-network
+
+  clip-api:
+    build:
+      context: ./clip-api
+      dockerfile: Dockerfile
+    image: clip-api:latest
+    container_name: clip-api
+    environment:
+      - CLIP_MODEL=ViT-B/32
+    ports:
+      - "8083:8083"
     networks:
       - guard-network
 

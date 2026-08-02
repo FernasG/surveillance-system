@@ -63,7 +63,7 @@ class VideoListResponse(BaseModel):
 
 class Settings(BaseSettings):
     env: str
-    clip_model: str
+    clip_server_url: str
     database_host: str
     database_port: str
     videos_dir: str

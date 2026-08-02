@@ -42,7 +42,7 @@ class RedisQueueWorker:
                     logger.error(f"Unexpected error in worker pipeline: {str(e)}", exc_info=True)
 
         except asyncio.CancelledError:
-            logger.error(f"Unexpected error in worker pipeline: {str(e)}", exc_info=True)
+            logger.info("Worker loop cancelled, shutting down")
         finally:
             await self.stop()
 

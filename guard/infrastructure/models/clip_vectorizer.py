@@ -1,8 +1,8 @@
-import torch, clip, cv2
+import requests
 import numpy as np
-from PIL import Image
 from guard.core.interfaces import VectorizerInterface
 from guard.core.entities import VideoFrame, VectorEmbedding, Settings
+from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 
 class CLIPVectorizer(VectorizerInterface):
     def __init__(self):
@@ -10,49 +10,29 @@ class CLIPVectorizer(VectorizerInterface):
 
         settings = Settings()
 
-        self.modelName = settings.clip_model
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model, self.preprocess = clip.load(self.modelName, device=self.device, jit=False)
+        self.api_url = settings.clip_server_url
+        self.request_timeout = 60
 
     def encode_image(self, frame: VideoFrame) -> VectorEmbedding:
-        img = Image.fromarray(cv2.cvtColor(frame.data, cv2.COLOR_BGR2RGB))
-
-        with torch.no_grad():
-            image_input = self.preprocess(img).unsqueeze(0).to(self.device)
-            embeddings = self.model.encode_image(image_input).float()
-            embeddings /= embeddings.norm(dim=-1, keepdim=True)
-
-        embeddings = embeddings.cpu().numpy().flatten()
+        embeddings = self._encode_images([frame.data])[0]
 
         return VectorEmbedding(embeddings=embeddings, metadata={})
-    
+
     def encode_text(self, query_text: str) -> np.ndarray:
-        with torch.no_grad():
-            text_input = clip.tokenize([query_text]).to(self.device)
-            embeddings = self.model.encode_text(text_input).float()
-            embeddings /= embeddings.norm(dim=-1, keepdim=True)
+        response = requests.post(
+            f"{self.api_url}/encode/text",
+            json={"text": query_text},
+            timeout=self.request_timeout
+        )
+        response.raise_for_status()
 
-        embeddings = embeddings.cpu().numpy().flatten()
+        return np.array(response.json()["embedding"], dtype=np.float32)
 
-        return embeddings
-    
     def encode_batch_images(self, frames: list[VideoFrame]) -> list[VectorEmbedding]:
         if not frames:
             return []
 
-        processed_images = []
-
-        for frame in frames:
-            img = Image.fromarray(cv2.cvtColor(frame.data, cv2.COLOR_BGR2RGB))
-            processed_images.append(self.preprocess(img))
-
-        image_input = torch.stack(processed_images).to(self.device)
-
-        with torch.no_grad():
-            batch_embeddings = self.model.encode_image(image_input).float()
-            batch_embeddings /= batch_embeddings.norm(dim=-1, keepdim=True)
-
-        embeddings_numpy = batch_embeddings.cpu().numpy()
+        embeddings = self._encode_images([frame.data for frame in frames])
 
         return [
             VectorEmbedding(
@@ -62,6 +42,18 @@ class CLIPVectorizer(VectorizerInterface):
                     "frame_index": frame.frame_index,
                     "video_path": frame.video_path,
                     "timestamp": frame.timestamp
-                }) 
-            for vector, frame in zip(embeddings_numpy, frames)
+                })
+            for vector, frame in zip(embeddings, frames)
         ]
+
+    def _encode_images(self, images: list[np.ndarray]) -> list[np.ndarray]:
+        payload = {"images": [cv2_to_base64(image, quality=90) for image in images]}
+
+        response = requests.post(
+            f"{self.api_url}/encode/images",
+            json=payload,
+            timeout=self.request_timeout
+        )
+        response.raise_for_status()
+
+        return [np.array(vector, dtype=np.float32) for vector in response.json()["embeddings"]]

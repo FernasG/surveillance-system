@@ -1,4 +1,6 @@
 from collections import Counter
+from datetime import date
+from typing import Optional
 from loguru import logger
 from guard.core.interfaces import AnalyticsStoreInterface
 
@@ -6,10 +8,10 @@ class AnalyticsService:
     def __init__(self, analytics_store: AnalyticsStoreInterface):
         self.store = analytics_store
 
-    async def get_dashboard_metrics(self) -> dict:
-        logger.info("Fetching overall analytics metrics")
-        
-        raw_data = await self.store.get_overall_dashboard_data()
+    async def get_dashboard_metrics(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> dict:
+        logger.info(f"Fetching analytics metrics (start_date={start_date}, end_date={end_date})")
+
+        raw_data = await self.store.get_dashboard_data(start_date, end_date)
 
         object_counter = Counter()
         for obj_string in raw_data["raw_objects_list"]:

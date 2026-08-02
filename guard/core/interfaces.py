@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from typing import Optional
+from datetime import date
 from abc import ABC, abstractmethod
 from guard.core.entities import VideoFrame, VectorEmbedding, VLMResponse, VLMMessage, User
 
@@ -56,6 +57,10 @@ class AnalyticsStoreInterface(ABC):
 
     @abstractmethod
     def update_event_analytics(self, event_id: str, objects_detected: str) -> None:
+        pass
+
+    @abstractmethod
+    async def get_dashboard_data(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> dict:
         pass
 
 class ObjectDetector(ABC):

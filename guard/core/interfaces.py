@@ -27,6 +27,11 @@ class VLMInterface(ABC):
     def generate(self, messages: list[VLMMessage], images: list = None, format_response: str = None) -> VLMResponse:
         pass
 
+class AsyncVLMInterface(ABC):
+    @abstractmethod
+    async def generate(self, messages: list[VLMMessage], images: list = None, format_response: str = None) -> VLMResponse:
+        pass
+
 class VectorStoreInterface(ABC):
     @abstractmethod
     def save(self, embedding: VectorEmbedding) -> bool:
@@ -40,9 +45,17 @@ class VectorStoreInterface(ABC):
     def search(self, query_vector: list[float], top_events: int = 5, fetch_multiplier: int = 10) -> list[dict]:
         pass
 
+    @abstractmethod
+    def update_event(self, event_id: str, description: str, objects: str) -> bool:
+        pass
+
 class AnalyticsStoreInterface(ABC):
     @abstractmethod
     def save_event_analytics(self, event_id: str, objects_detected: str, timestamp: str) -> None:
+        pass
+
+    @abstractmethod
+    def update_event_analytics(self, event_id: str, objects_detected: str) -> None:
         pass
 
 class ObjectDetector(ABC):

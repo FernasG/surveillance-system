@@ -1,3 +1,4 @@
+import redis
 from guard.core.entities import Settings
 from guard.infrastructure.models.gemma_vlm import GemmaVLM
 from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
@@ -19,11 +20,13 @@ class ApplicationContainer:
         self.analytics_service = None
         self.auth_service = None
         self.retrieval_service = None
+        self.redis_client = None
 
     async def initialize(self):
         self.vectorizer = CLIPVectorizer()
         prompt_manager = PromptManager()
         gemma_vlm = GemmaVLM()
+        self.redis_client = redis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
 
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
 
@@ -35,8 +38,11 @@ class ApplicationContainer:
         analytics_repo = SqliteAnalyticsStore(database)
         self.analytics_service = AnalyticsService(analytics_repo)
 
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager)
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager, redis_client=self.redis_client)
 
     async def shutdown(self):
         if self.vectorizer:
             del self.vectorizer
+
+        if self.redis_client:
+            self.redis_client.close()

@@ -1,13 +1,12 @@
+import redis
 from redis import asyncio as aioredis
 
 from guard.core.entities import Settings
-from guard.infrastructure.models.qwen_vlm import QwenVLM
-from guard.infrastructure.models.yolo_detector import YOLODetector
 from guard.infrastructure.models.clip_vectorizer import CLIPVectorizer
 from guard.infrastructure.messaging.queue_worker import RedisQueueWorker
+from guard.infrastructure.messaging.redis_event_publisher import RedisEventPublisher
 from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.database.sqlite_analytics_store import SqliteAnalyticsStore
-from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.infrastructure.database.sqlite_store import SqliteDatabase
 
 from guard.pipeline.inference.inference_service import InferenceService
@@ -20,27 +19,29 @@ class WorkerContainer:
         self.settings = settings
 
         self.redis_client = None
+        self.event_publisher_client = None
         self.queue_worker = None
 
     async def initialize(self):
         vectorizer = CLIPVectorizer()
-        prompt_manager = PromptManager()
-        yolo_detector = YOLODetector()
         sampler = MOG2FrameSampler()
-        qwen_vlm = QwenVLM()
 
         self.redis_client = aioredis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
+        self.event_publisher_client = redis.Redis(host=self.settings.redis_host, port=self.settings.redis_port)
         store = ChromaDBStore(host=self.settings.database_host, port=self.settings.database_port)
 
         database = SqliteDatabase()
         analytics_repo = SqliteAnalyticsStore(database)
 
+        event_publisher = RedisEventPublisher(self.event_publisher_client, self.settings.event_queue_name)
+
         acquisition_service = AcquisitionService()
         preprocessor_service = PreprocessorService(sampler=sampler)
         inference_service = InferenceService(
-            vectorizer=vectorizer, object_detector=yolo_detector,
-            store=store, vlm=qwen_vlm, prompt_manager=prompt_manager,
-            analytics_store=analytics_repo
+            vectorizer=vectorizer,
+            store=store,
+            analytics_store=analytics_repo,
+            event_publisher=event_publisher,
         )
 
         self.queue_worker = RedisQueueWorker(
@@ -51,6 +52,5 @@ class WorkerContainer:
         )
 
     async def shutdown(self):
-        # RedisQueueWorker.start() already closes the redis connection
-        # in its own finally block once its task is cancelled.
-        pass
+        if self.event_publisher_client:
+            self.event_publisher_client.close()

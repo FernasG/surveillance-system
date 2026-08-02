@@ -1,19 +1,21 @@
 import re
 import cv2
+import redis
 from loguru import logger
 from typing import Optional
 from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface
-from guard.core.entities import Settings, VLMMessage
+from guard.core.entities import Settings, VLMMessage, SEARCH_PRIORITY_CHANNEL
 
 class RetrievalService:
-    def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface, prompt_manager: PromptManager):
+    def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface, prompt_manager: PromptManager, redis_client: redis.Redis):
         self.settings = Settings()
         self.prompt_manager = prompt_manager
         self.vectorizer = vectorizer
         self.store = store
         self.vlm = vlm
+        self.redis_client = redis_client
 
     def search_by_text(self, text: str, top_k: int = 5):
         log_context = {"text": text, "top_k": top_k}
@@ -52,7 +54,13 @@ class RetrievalService:
                 return {"results": []}
             
             messages = self._setup_gemma_params(text, extracted_data)
-            response = self.vlm.generate(messages)
+
+            self._publish_search_priority("started")
+            try:
+                response = self.vlm.generate(messages)
+            finally:
+                self._publish_search_priority("finished")
+
             eval_scores = self._parse_eval_scores(response.content)
 
             final_results = []
@@ -88,6 +96,12 @@ class RetrievalService:
             req_logger.critical(f"Something went really wrong {e}")
             return {"error": str(e), "results": []}
         
+    def _publish_search_priority(self, state: str) -> None:
+        try:
+            self.redis_client.publish(SEARCH_PRIORITY_CHANNEL, state)
+        except Exception as e:
+            logger.warning(f"Failed to publish search priority signal ({state}): {e}")
+
     def _setup_gemma_params(self, text: str, extracted_data: list[dict]) -> list[VLMMessage]:
         formatted_descriptions = "\n".join([
             f"Index {data['index']}: {data['description']}"

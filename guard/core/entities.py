@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     redis_host: str
     redis_port: str
     redis_queue_name: str
+    event_queue_name: str
     generation_model: str
     generation_server_url: str
     image_model: str
@@ -80,3 +81,5 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+SEARCH_PRIORITY_CHANNEL = "search:priority"

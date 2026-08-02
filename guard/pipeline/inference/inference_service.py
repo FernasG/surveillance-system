@@ -1,53 +1,52 @@
-import cv2
 import uuid
 import numpy as np
-from PIL import Image
+from typing import Optional
 from loguru import logger
 from datetime import datetime, timezone
 
-from guard.infrastructure.models.utils.prompt_manager import PromptManager
-from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface, ObjectDetector
-from guard.core.entities import VideoFrame, VLMMessage
-from guard.core.interfaces import AnalyticsStoreInterface
+from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, AnalyticsStoreInterface
+from guard.core.entities import VideoFrame
+from guard.infrastructure.messaging.redis_event_publisher import RedisEventPublisher
 
 class InferenceService:
     def __init__(
         self,
         vectorizer: VectorizerInterface,
-        prompt_manager: PromptManager,
-        object_detector: ObjectDetector,
         analytics_store: AnalyticsStoreInterface,
         store: VectorStoreInterface,
-        vlm: VLMInterface,
+        event_publisher: RedisEventPublisher,
     ):
-        self.object_detector = object_detector
         self.analytics_store = analytics_store
-        self.prompt_manager = prompt_manager
         self.vectorizer = vectorizer
         self.store = store
-        self.vlm = vlm
-        
+        self.event_publisher = event_publisher
+
         self.BATCH_SIZE = 8
-        self.TARGET_SIZE = 640
 
         self.TIME_THRESHOLD_MS = 5000
         self.SIMILARITY_THRESHOLD = 0.82
-        self.PEAK_ESSENCE_THRESHOLD = 0.94
         self.ALPHA_EMA = 0.30
         self.SPATIAL_OVERLAP_THRESHOLD = 0.10
 
         self.current_event_id = None
         self.event_centroid = None
-        self.event_frame_count = 0
-        self.last_timestamp_ms = 0.0
+        self.last_event_epoch_ms = None
         self.active_motion_bbox = None
-        self.current_event_description = "Description unavailable"
+
+        self.best_frame_video_path = None
+        self.best_frame_elapsed_ms = None
+        self.best_frame_motion_area = -1.0
 
     def inferer(self, frames: list[VideoFrame]):
         req_logger = logger.bind(frames_count=len(frames))
 
         try:
             req_logger.info("Running batch inference and event clustering on video frames")
+
+            if not frames:
+                return
+
+            self._close_if_idle(frames[0])
 
             batches = [
                 frames[i:i + self.BATCH_SIZE]
@@ -56,19 +55,19 @@ class InferenceService:
 
             for batch in batches:
                 vectors = self.vectorizer.encode_batch_images(batch)
+                batch_closures: list[dict] = []
 
                 for idx, frame in enumerate(batch):
                     current_vector = vectors[idx].embeddings
-                    current_time_ms = getattr(frame, "elapsed_ms")
+                    current_epoch_ms = self._get_absolute_epoch_ms(frame)
+                    current_motion_bbox = getattr(frame, "motion_bbox", None)
+                    motion_area = self._bbox_area(current_motion_bbox)
 
                     is_new_event = True
                     similarity = 0.0
 
-                    detected_str = self.object_detector.detect(frame.data)
-                    current_motion_bbox = getattr(frame, "motion_bbox", None)
-
                     if self.current_event_id is not None:
-                        time_diff = current_time_ms - self.last_timestamp_ms
+                        time_diff = current_epoch_ms - self.last_event_epoch_ms
 
                         similarity = float(np.dot(current_vector, self.event_centroid))
 
@@ -83,18 +82,24 @@ class InferenceService:
                                 is_new_event = False
 
                     if is_new_event:
+                        closure = self._close_current_event()
+
+                        if closure:
+                            batch_closures.append(closure)
+
                         self.current_event_id = str(uuid.uuid4())
-                        req_logger.debug(f"New event detected: {self.current_event_id} at {current_time_ms}ms")
+                        req_logger.debug(f"New event detected: {self.current_event_id} at {current_epoch_ms}ms")
 
                         self.event_centroid = current_vector.copy()
-                        self.highest_essence_score = 0.0
                         self.active_motion_bbox = current_motion_bbox
 
-                        self.current_event_description = self._get_image_description(frame)
+                        self.best_frame_video_path = frame.video_path
+                        self.best_frame_elapsed_ms = frame.elapsed_ms
+                        self.best_frame_motion_area = motion_area
 
                         self.analytics_store.save_event_analytics(
                             event_id=self.current_event_id,
-                            objects_detected=detected_str,
+                            objects_detected="",
                             timestamp=self._get_event_timestamp(frame)
                         )
                     else:
@@ -102,26 +107,67 @@ class InferenceService:
                         self.event_centroid = self.event_centroid / np.linalg.norm(self.event_centroid)
                         self.active_motion_bbox = current_motion_bbox
 
-                        if similarity > self.PEAK_ESSENCE_THRESHOLD and similarity > self.highest_essence_score:
-                            self.highest_essence_score = similarity
-                            req_logger.info(f"Peak action found (sim: {similarity:.3f}). Refining VLM description.")
-
-                            self.current_event_description = self._get_image_description(frame)
+                        if motion_area > self.best_frame_motion_area:
+                            self.best_frame_motion_area = motion_area
+                            self.best_frame_video_path = frame.video_path
+                            self.best_frame_elapsed_ms = frame.elapsed_ms
 
                     if vectors[idx].metadata is None:
                         vectors[idx].metadata = {}
-                    
-                    vectors[idx].metadata["event_id"] = self.current_event_id
-                    vectors[idx].metadata["description"] = self.current_event_description
-                    vectors[idx].metadata["is_keyframe"] = is_new_event
-                    vectors[idx].metadata["objects"] = detected_str
 
-                    self.last_timestamp_ms = current_time_ms
+                    vectors[idx].metadata["event_id"] = self.current_event_id
+                    vectors[idx].metadata["description"] = "pending"
+                    vectors[idx].metadata["is_keyframe"] = is_new_event
+                    vectors[idx].metadata["objects"] = ""
+
+                    self.last_event_epoch_ms = current_epoch_ms
 
                 self.store.save_batch(vectors)
+
+                for closure in batch_closures:
+                    self.event_publisher.publish_event_closed(**closure)
         except Exception:
             req_logger.exception("Failed to execute inference or save vector batches")
             raise
+
+    def _close_if_idle(self, next_frame: VideoFrame) -> None:
+        if self.current_event_id is None:
+            return
+
+        first_epoch_ms = self._get_absolute_epoch_ms(next_frame)
+
+        if first_epoch_ms - self.last_event_epoch_ms > self.TIME_THRESHOLD_MS:
+            closure = self._close_current_event()
+
+            if closure:
+                self.event_publisher.publish_event_closed(**closure)
+
+    def _close_current_event(self) -> Optional[dict]:
+        if self.current_event_id is None:
+            return None
+
+        closure = {
+            "event_id": self.current_event_id,
+            "video_path": self.best_frame_video_path,
+            "elapsed_ms": self.best_frame_elapsed_ms,
+        }
+
+        self.current_event_id = None
+        self.event_centroid = None
+        self.active_motion_bbox = None
+        self.best_frame_video_path = None
+        self.best_frame_elapsed_ms = None
+        self.best_frame_motion_area = -1.0
+
+        return closure
+
+    def _bbox_area(self, bbox: Optional[tuple]) -> float:
+        if bbox is None:
+            return 0.0
+
+        x1, y1, x2, y2 = bbox
+
+        return max(0, x2 - x1) * max(0, y2 - y1)
 
     def _iou(self, box_a: tuple, box_b: tuple) -> float:
         if box_a is None or box_b is None:
@@ -143,31 +189,10 @@ class InferenceService:
 
         return inter_area / union_area if union_area > 0 else 0.0
 
+    def _get_absolute_epoch_ms(self, frame: VideoFrame) -> float:
+        return frame.timestamp * 1000 + frame.elapsed_ms
+
     def _get_event_timestamp(self, frame: VideoFrame) -> str:
         event_epoch_seconds = frame.timestamp + (frame.elapsed_ms / 1000.0)
 
         return datetime.fromtimestamp(event_epoch_seconds, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
-    def _get_image_description(self, frame: VideoFrame) -> str:
-        try:
-            messages, image = self._setup_vlm_params(frame.data)
-            response = self.vlm.generate(messages, [image])
-
-            return response.content
-        except Exception as e:
-            logger.warning(f"Failed to generate description for frame: {e}")
-            return "Description unavailable"
-
-    def _setup_vlm_params(self, frame: np.ndarray) -> tuple[list[VLMMessage], list[Image.Image]]:
-        height, width, _ = frame.shape
-        scale = self.TARGET_SIZE / max(width, height)
-        new_w, new_h = int(width * scale), int(height * scale)
-
-        small_frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
-        rgb_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_frame)
-
-        prompt_text = self.prompt_manager.build(prompt_name="image_description")
-        messages: list[VLMMessage] = [VLMMessage(role="user", content=prompt_text)]
-
-        return messages, pil_img

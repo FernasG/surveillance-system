@@ -17,8 +17,6 @@ class SqliteDatabase:
 
     def _init_db(self):
         with self.get_connection() as conn:
-            # WAL allows the API (reads) and worker (writes) containers to
-            # share this file across processes without lock contention.
             conn.execute("PRAGMA journal_mode=WAL")
 
             conn.execute("""
@@ -36,6 +34,11 @@ class SqliteDatabase:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
                     objects_detected TEXT
                 )
+            """)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_event_analytics_event_id
+                ON event_analytics(event_id)
             """)
 
             conn.commit()

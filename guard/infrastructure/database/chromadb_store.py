@@ -60,6 +60,35 @@ class ChromaDBStore(VectorStoreInterface):
 
         return unique_events
 
+    def update_event(self, event_id: str, description: str, objects: str) -> bool:
+        matches = self.collection.get(
+            where={"event_id": event_id},
+            include=["embeddings", "metadatas"],
+        )
+        ids = matches.get("ids", [])
+
+        if not ids:
+            return False
+
+        embeddings = matches.get("embeddings", [])
+        metadatas = matches.get("metadatas", [])
+        merged_metadatas = []
+
+        for metadata in metadatas:
+            merged = dict(metadata or {})
+            merged["description"] = description
+            merged["objects"] = objects
+            merged_metadatas.append(merged)
+
+        self.collection.update(
+            ids=ids,
+            embeddings=embeddings,
+            metadatas=merged_metadatas,
+            documents=[description] * len(ids),
+        )
+
+        return True
+
     def save_batch(self, embeddings: list[VectorEmbedding]) -> bool:
         vectors_list = [emp.embeddings.tolist() for emp in embeddings]
         metadatas_list = [emp.metadata for emp in embeddings]

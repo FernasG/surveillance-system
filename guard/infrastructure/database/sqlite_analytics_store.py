@@ -23,6 +23,22 @@ class SqliteAnalyticsStore(AnalyticsStoreInterface):
         except Exception as e:
             logger.error(f"Failed to save analytics for event {event_id}: {e}")
 
+    def update_event_analytics(self, event_id: str, objects_detected: str) -> None:
+        try:
+            with self.db.get_connection() as conn:
+                conn.execute(
+                    """
+                    UPDATE event_analytics
+                    SET objects_detected = ?
+                    WHERE event_id = ?
+                    """,
+                    (objects_detected, event_id)
+                )
+                conn.commit()
+
+        except Exception as e:
+            logger.error(f"Failed to update analytics for event {event_id}: {e}")
+
     async def get_daily_dashboard_data(self) -> dict:
         return await asyncio.to_thread(self._get_daily_dashboard_data_sync)
 

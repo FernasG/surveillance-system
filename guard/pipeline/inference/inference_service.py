@@ -130,6 +130,13 @@ class InferenceService:
             req_logger.exception("Failed to execute inference or save vector batches")
             raise
 
+    def close_open_event(self) -> None:
+        closure = self._close_current_event()
+
+        if closure:
+            logger.bind(event_id=closure["event_id"]).info("Flushing open event on shutdown")
+            self.event_publisher.publish_event_closed(**closure)
+
     def _close_if_idle(self, next_frame: VideoFrame) -> None:
         if self.current_event_id is None:
             return

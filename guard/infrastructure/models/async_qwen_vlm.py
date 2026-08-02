@@ -4,6 +4,7 @@ from typing import Literal
 from PIL.Image import Image
 from guard.core.entities import Settings
 from guard.core.entities import VLMResponse, VLMMessage
+from guard.core.exceptions import VLMGenerationError
 from guard.core.interfaces import AsyncVLMInterface
 from .utils.image_utils import pil_to_base64
 
@@ -69,12 +70,10 @@ class AsyncQwenVLM(AsyncVLMInterface):
             content = response_json["choices"][0]["message"]["content"].strip()
 
             return VLMResponse(role="assistant", content=content)
-        except httpx.HTTPError as e:
-            message = f"Error communicating with VLM server: {str(e)}"
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as e:
+            logger.error(f"VLM request failed: {e}")
 
-            logger.error(message)
-
-            return VLMResponse(role="assistant", content=message)
+            raise VLMGenerationError(f"VLM request failed: {e}") from e
 
     async def aclose(self) -> None:
         await self._client.aclose()

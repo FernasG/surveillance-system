@@ -83,3 +83,6 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 SEARCH_PRIORITY_CHANNEL = "search:priority"
+
+SEARCH_GATE_KEY = "search:active"
+SEARCH_GATE_TTL_S = 330

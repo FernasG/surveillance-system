@@ -9,5 +9,5 @@ def get_retrieval_service(request: Request) -> RetrievalService:
     return request.state.retrieval_service
 
 @router.post("/query", dependencies=[Depends(get_current_user_token_data)])
-async def query(query: Query, retrieval_service: RetrievalService = Depends(get_retrieval_service)):
+def query(query: Query, retrieval_service: RetrievalService = Depends(get_retrieval_service)):
     return retrieval_service.search_by_text(query.text)

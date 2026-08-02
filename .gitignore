@@ -219,6 +219,12 @@ __marimo__/
 videos/*.mp4
 videos/*.mkv
 
+# Camera segments dropped at repo root (e.g. cam1_<timestamp>.mp4) — these
+# are runtime output, not source, and are large enough to bloat the repo.
+/*.mp4
+/*.mkv
+/*.avi
+
 # Database Folders
 chroma_data/
 data/

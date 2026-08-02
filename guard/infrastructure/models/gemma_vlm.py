@@ -4,6 +4,7 @@ from typing import Literal
 from PIL.Image import Image
 from guard.core.entities import Settings
 from guard.core.entities import VLMResponse, VLMMessage
+from guard.core.exceptions import VLMGenerationError
 from guard.core.interfaces import VLMInterface
 from .utils.image_utils import pil_to_base64
 
@@ -68,9 +69,7 @@ class GemmaVLM(VLMInterface):
             content = response_json["choices"][0]["message"]["content"].strip()
 
             return VLMResponse(role="assistant", content=content)
-        except requests.exceptions.RequestException as e:
-            message = f"Error communicating with Ollama server: {str(e)}"
+        except (requests.exceptions.RequestException, KeyError, IndexError, ValueError) as e:
+            logger.error(f"VLM request failed: {e}")
 
-            logger.error(message)
-
-            return VLMResponse(role="assistant", content=message)
+            raise VLMGenerationError(f"VLM request failed: {e}") from e

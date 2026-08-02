@@ -31,28 +31,37 @@ class DescriptionService:
 
         self.TARGET_SIZE = 640
         self.current_vlm_task: Optional[asyncio.Task] = None
+        self._preempted = False
 
     async def process(self, event_id: str, video_path: str, elapsed_ms: int) -> Optional[bool]:
         req_logger = logger.bind(event_id=event_id, video_path=video_path)
 
-        frame = self._extract_frame(video_path, elapsed_ms)
+        frame = await asyncio.to_thread(self._extract_frame, video_path, elapsed_ms)
 
         if frame is None:
             req_logger.warning("Failed to extract representative frame for event; dropping")
             return False
 
-        objects = self.object_detector.detect(frame)
+        if self.search_active is not None and self.search_active.is_set():
+            return None
+
+        objects = await asyncio.to_thread(self.object_detector.detect, frame)
         messages, image = self._setup_vlm_params(frame)
 
+        self._preempted = False
         task = asyncio.create_task(self.vlm.generate(messages, [image]))
         self.current_vlm_task = task
 
         if self.search_active is not None and self.search_active.is_set():
+            self._preempted = True
             task.cancel()
 
         try:
             response = await task
         except asyncio.CancelledError:
+            if not self._preempted:
+                raise
+
             req_logger.info("Description generation cancelled in favor of a search request")
             return None
         finally:
@@ -60,13 +69,14 @@ class DescriptionService:
 
         description = response.content
 
-        self.store.update_event(event_id, description=description, objects=objects)
-        self.analytics_store.update_event_analytics(event_id, objects_detected=objects)
+        await asyncio.to_thread(self.store.update_event, event_id, description=description, objects=objects)
+        await asyncio.to_thread(self.analytics_store.update_event_analytics, event_id, objects_detected=objects)
 
         return True
 
     def cancel_in_flight(self) -> None:
         if self.current_vlm_task and not self.current_vlm_task.done():
+            self._preempted = True
             self.current_vlm_task.cancel()
 
     def _extract_frame(self, video_path: str, elapsed_ms: int) -> Optional[np.ndarray]:

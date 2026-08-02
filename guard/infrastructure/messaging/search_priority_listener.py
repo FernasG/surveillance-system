@@ -8,11 +8,6 @@ class SearchPriorityListener:
         self._channel = channel
         self.search_active = asyncio.Event()
 
-        # Event.wait() blocks until *set*, not until cleared — so waiting for a
-        # search to finish needs its own event with inverted semantics, started
-        # set (no search in progress). Awaiting `search_active.wait()` directly
-        # would return immediately whenever a search was already active, the
-        # opposite of what a caller wanting to defer work needs.
         self.not_searching = asyncio.Event()
         self.not_searching.set()
 

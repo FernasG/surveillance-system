@@ -6,7 +6,7 @@ from loguru import logger
 from guard.core.entities import Settings
 from guard.infrastructure.logging.logger_config import setup_logging
 from guard.infrastructure.messaging.search_priority_listener import SearchPriorityListener
-from guard.worker.description_container import DescriptionWorkerContainer
+from guard.worker.enrichment_container import EnrichmentWorkerContainer
 
 LISTENER_RESTART_DELAY_S = 5
 
@@ -27,7 +27,7 @@ async def main():
 
     setup_logging(json_format=(settings.env == "production"))
 
-    container = DescriptionWorkerContainer(settings)
+    container = EnrichmentWorkerContainer(settings)
     await container.initialize()
 
     loop = asyncio.get_running_loop()

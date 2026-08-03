@@ -10,7 +10,7 @@ from guard.core.entities import VLMMessage
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 
-class DescriptionService:
+class EnrichmentService:
     def __init__(
         self,
         acquisition_service: AcquisitionService,
@@ -33,7 +33,7 @@ class DescriptionService:
         self.current_vlm_task: Optional[asyncio.Task] = None
         self._preempted = False
 
-    async def process(self, event_id: str, video_path: str, elapsed_ms: int) -> Optional[bool]:
+    async def enrich(self, event_id: str, video_path: str, elapsed_ms: int) -> Optional[bool]:
         req_logger = logger.bind(event_id=event_id, video_path=video_path)
 
         frame = await asyncio.to_thread(self._extract_frame, video_path, elapsed_ms)

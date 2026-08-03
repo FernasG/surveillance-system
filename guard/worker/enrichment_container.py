@@ -10,10 +10,10 @@ from guard.infrastructure.database.chromadb_store import ChromaDBStore
 from guard.infrastructure.database.sqlite_analytics_store import SqliteAnalyticsStore
 from guard.infrastructure.database.sqlite_store import SqliteDatabase
 
-from guard.pipeline.description.description_service import DescriptionService
+from guard.pipeline.enrichment.enrichment_service import EnrichmentService
 from guard.pipeline.acquisition.acquisition_service import AcquisitionService
 
-class DescriptionWorkerContainer:
+class EnrichmentWorkerContainer:
     def __init__(self, settings: Settings):
         self.settings = settings
 
@@ -40,7 +40,7 @@ class DescriptionWorkerContainer:
 
         self.priority_listener = SearchPriorityListener(self.priority_redis_client, SEARCH_PRIORITY_CHANNEL)
 
-        description_service = DescriptionService(
+        enrichment_service = EnrichmentService(
             acquisition_service=acquisition_service,
             object_detector=yolo_detector,
             vlm=self.vlm,
@@ -52,7 +52,7 @@ class DescriptionWorkerContainer:
 
         self.queue_worker = RedisEventQueueWorker(
             self.redis_client,
-            description_service,
+            enrichment_service,
             self.priority_listener,
         )
 

@@ -3,7 +3,7 @@ from redis import asyncio as aioredis
 
 from guard.core.entities import SEARCH_GATE_KEY
 from guard.core.exceptions import VLMGenerationError
-from guard.pipeline.description.description_service import DescriptionService
+from guard.pipeline.enrichment.enrichment_service import EnrichmentService
 from guard.infrastructure.messaging.search_priority_listener import SearchPriorityListener
 
 logger = logging.getLogger(__name__)
@@ -16,14 +16,14 @@ class RedisEventQueueWorker:
     def __init__(
         self,
         redis_client: aioredis.Redis,
-        description_service: DescriptionService,
+        enrichment_service: EnrichmentService,
         priority_listener: SearchPriorityListener,
     ):
-        self.description_service = description_service
+        self.enrichment_service = enrichment_service
         self.priority_listener = priority_listener
         self._redis_client = redis_client
 
-        self.priority_listener.set_on_started_callback(self.description_service.cancel_in_flight)
+        self.priority_listener.set_on_started_callback(self.enrichment_service.cancel_in_flight)
 
     async def start(self, queue_name: str):
         logger.info("Starting Description Worker (Async)")
@@ -61,7 +61,7 @@ class RedisEventQueueWorker:
 
     async def _handle_event(self, queue_name: str, event: dict) -> None:
         try:
-            outcome = await self.description_service.process(
+            outcome = await self.enrichment_service.enrich(
                 event_id=event["event_id"],
                 video_path=event["video_path"],
                 elapsed_ms=event["elapsed_ms"],

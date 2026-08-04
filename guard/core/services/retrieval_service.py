@@ -48,7 +48,7 @@ class RetrievalService:
                     "event_id": event_data.get("event_id"),
                     "video_path": video_path,
                     "elapsed_ms": elapsed_ms,
-                    "description": event_data.get("description", "Description unavailable")
+                    "description": event_data.get("description")
                 })
 
             if not extracted_data:

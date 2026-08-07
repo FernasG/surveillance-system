@@ -1,22 +1,33 @@
 import re
 import cv2
 import redis
+import numpy as np
 from loguru import logger
 from typing import Optional
 from guard.infrastructure.models.utils.image_utils import cv2_to_base64
 from guard.infrastructure.models.utils.prompt_manager import PromptManager
 from guard.core.interfaces import VectorizerInterface, VectorStoreInterface, VLMInterface
 from guard.core.exceptions import VLMGenerationError
-from guard.core.entities import Settings, VLMMessage, SEARCH_PRIORITY_CHANNEL, SEARCH_GATE_KEY, SEARCH_GATE_TTL_S
+from guard.core.entities import Settings, VideoFrame, VLMMessage, SEARCH_PRIORITY_CHANNEL, SEARCH_GATE_KEY, SEARCH_GATE_TTL_S
+from guard.core.services.video_service import VideoService
 
 class RetrievalService:
-    def __init__(self, vectorizer: VectorizerInterface, store: VectorStoreInterface, vlm: VLMInterface, prompt_manager: PromptManager, redis_client: redis.Redis):
+    def __init__(
+            self,
+            vectorizer: VectorizerInterface,
+            store: VectorStoreInterface,
+            vlm: VLMInterface,
+            prompt_manager: PromptManager,
+            redis_client: redis.Redis,
+            video_service: VideoService
+        ):
         self.settings = Settings()
         self.prompt_manager = prompt_manager
         self.vectorizer = vectorizer
         self.store = store
         self.vlm = vlm
         self.redis_client = redis_client
+        self.video_service = video_service
 
     def search_by_text(self, text: str, top_k: int = 5):
         log_context = {"text": text, "top_k": top_k}
@@ -98,7 +109,85 @@ class RetrievalService:
         except Exception as e:
             req_logger.critical(f"Something went really wrong {e}")
             return {"error": str(e), "results": []}
-        
+
+    def search_by_image(self, image: np.ndarray, top_k: int = 5) -> dict:
+        log_context = {"top_k": top_k}
+        req_logger = logger.bind(queue_message=log_context)
+
+        try:
+            req_logger.info("Starting Image-Based RAG Query")
+
+            frame = VideoFrame(timestamp=0, video_path="", elapsed_ms=0, frame_index=0, data=image)
+            embedding = self.vectorizer.encode_image(frame)
+            search_result = self.store.search(embedding.embeddings.tolist(), top_events=top_k)
+
+            return self._build_grouped_results(search_result)
+        except Exception as e:
+            req_logger.critical(f"Something went really wrong {e}")
+            return {"error": str(e), "results": []}
+
+    def search_by_video_frame(self, video_name: str, timestamp_s: float, top_k: int = 5) -> dict:
+        video_path = self.video_service.get_video_path(video_name)
+        frame = self._extract_frame_at_timestamp(str(video_path), timestamp_s)
+
+        return self.search_by_image(frame, top_k=top_k)
+
+    def _build_grouped_results(self, search_result: list[dict]) -> dict:
+        if not search_result:
+            return {"results": []}
+
+        results = []
+
+        for event_data in search_result:
+            metadata = event_data.get("metadata", {})
+            elapsed_ms = metadata.get("elapsed_ms")
+            video_path = metadata.get("video_path")
+
+            if elapsed_ms is None or not video_path:
+                continue
+
+            distance = event_data.get("distance", 4.0)
+            confidence_score = max(0.0, min(1.0, 1 - (distance / 2.0)))
+
+            results.append({
+                "uuid": event_data.get("frame_id"),
+                "event_id": event_data.get("event_id"),
+                "video_path": video_path,
+                "elapsed_ms": elapsed_ms,
+                "description": event_data.get("description"),
+                "confidence_score": round(confidence_score, 3),
+                "frame_base64": self._extract_frame_base64(video_path, elapsed_ms)
+            })
+
+        return {"results": results}
+
+    def _extract_frame_at_timestamp(self, video_path: str, timestamp_s: float) -> np.ndarray:
+        cap = cv2.VideoCapture(video_path)
+
+        try:
+            if not cap.isOpened():
+                raise ValueError(f"Could not open video file: {video_path}")
+
+            if timestamp_s < 0:
+                raise ValueError(f"Timestamp {timestamp_s}s is out of bounds")
+
+            fps = cap.get(cv2.CAP_PROP_FPS) or 0
+            frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+            duration_s = frame_count / fps if fps > 0 else 0
+
+            if duration_s > 0 and timestamp_s > duration_s:
+                raise ValueError(f"Timestamp {timestamp_s}s is out of bounds for video of duration {duration_s:.2f}s")
+
+            cap.set(cv2.CAP_PROP_POS_MSEC, timestamp_s * 1000)
+            success, frame = cap.read()
+
+            if not success or frame is None:
+                raise ValueError(f"Could not read frame at {timestamp_s}s from {video_path}")
+
+            return frame
+        finally:
+            cap.release()
+
     def _enter_search(self) -> None:
         try:
             pipe = self.redis_client.pipeline()

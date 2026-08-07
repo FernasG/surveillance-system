@@ -15,3 +15,10 @@ def cv2_to_base64(frame: np.ndarray, quality: int = 80) -> str:
     if not success:
         return ""
     return base64.b64encode(buffer).decode('utf-8')
+
+def bytes_to_cv2(data: bytes) -> np.ndarray:
+    arr = np.frombuffer(data, dtype=np.uint8)
+    frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if frame is None:
+        raise ValueError("Invalid or unsupported image format")
+    return frame

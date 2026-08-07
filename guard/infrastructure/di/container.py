@@ -11,6 +11,7 @@ from guard.infrastructure.database.sqlite_store import SqliteDatabase
 from guard.core.services.retrieval_service import RetrievalService
 from guard.core.services.auth_service import AuthService
 from guard.core.services.analytics_service import AnalyticsService
+from guard.core.services.video_service import VideoService
 
 class ApplicationContainer:
     def __init__(self, settings: Settings):
@@ -20,6 +21,7 @@ class ApplicationContainer:
         self.analytics_service = None
         self.auth_service = None
         self.retrieval_service = None
+        self.video_service = None
         self.redis_client = None
 
     async def initialize(self):
@@ -38,7 +40,9 @@ class ApplicationContainer:
         analytics_repo = SqliteAnalyticsStore(database)
         self.analytics_service = AnalyticsService(analytics_repo)
 
-        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager, redis_client=self.redis_client)
+        self.video_service = VideoService()
+
+        self.retrieval_service = RetrievalService(vectorizer=self.vectorizer, store=store, vlm=gemma_vlm, prompt_manager=prompt_manager, redis_client=self.redis_client, video_service=self.video_service)
 
     async def shutdown(self):
         if self.vectorizer:

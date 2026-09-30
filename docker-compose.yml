@@ -24,7 +24,7 @@ services:
     depends_on:
       - chromadb
       - clip-api
-      - gemma-api
+      - qwen-api
     devices:
       - "/dev/video0:/dev/video0"
     networks:
@@ -50,8 +50,7 @@ services:
       - chromadb
       - redis
       - clip-api
-      # - qwen-api
-      - liquid-api
+      - qwen-api
     networks:
       - guard-network
 
@@ -74,7 +73,7 @@ services:
     depends_on:
       - chromadb
       - redis
-      - liquid-api
+      - qwen-api
     networks:
       - guard-network
 
@@ -119,54 +118,18 @@ services:
     networks:
       - guard-network
 
-  # qwen-api:
-  #   build:
-  #     context: ./llama.cpp
-  #     dockerfile: Dockerfile
-  #   image: custom-llama-cpp:latest
-  #   container_name: qwen-api
-  #   ports:
-  #     - "8081:8081"
-  #   volumes:
-  #     - ./llama.cpp/models:/models
-  #     - ./llama.cpp/scripts:/scripts
-  #   entrypoint: ["/bin/sh", "/scripts/start_qwen.sh"]
-  #   depends_on:
-  #     llama-downloader:
-  #       condition: service_completed_successfully
-  #   networks:
-  #     - guard-network
-
-  liquid-api:
+  qwen-api:
     build:
       context: ./llama.cpp
       dockerfile: Dockerfile
     image: custom-llama-cpp:latest
-    container_name: liquid-api
+    container_name: qwen-api
     ports:
       - "8081:8081"
     volumes:
       - ./llama.cpp/models:/models
       - ./llama.cpp/scripts:/scripts
-    entrypoint: ["/bin/sh", "/scripts/start_liquid.sh"]
-    depends_on:
-      llama-downloader:
-        condition: service_completed_successfully
-    networks:
-      - guard-network
-
-  gemma-api:
-    build:
-      context: ./llama.cpp
-      dockerfile: Dockerfile
-    image: custom-llama-cpp:latest
-    container_name: gemma-api
-    ports:
-      - "8082:8082"
-    volumes:
-      - ./llama.cpp/models:/models
-      - ./llama.cpp/scripts:/scripts
-    entrypoint: ["/bin/sh", "/scripts/start_gemma.sh"]
+    entrypoint: ["/bin/sh", "/scripts/start_qwen.sh"]
     depends_on:
       llama-downloader:
         condition: service_completed_successfully

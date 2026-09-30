@@ -209,17 +209,21 @@ class RetrievalService:
         except Exception as e:
             logger.warning(f"Failed to signal search finish: {e}")
 
-    def _setup_gemma_params(self, text: str, extracted_data: list[dict]) -> list[VLMMessage]:
+    def _setup_gemma_params(self, user_query: str, extracted_data: list[dict]) -> list[VLMMessage]:
         formatted_descriptions = "\n".join([
             f"Index {data['index']}: {data['description']}"
             for data in extracted_data
         ])
 
+        num_descriptions = len(extracted_data)
+        max_index = num_descriptions - 1
+
         prompt_text = self.prompt_manager.build(
             prompt_name="search_evaluation_text",
-            num_descriptions=len(extracted_data),
             formatted_descriptions=formatted_descriptions,
-            user_query=text,
+            num_descriptions=num_descriptions,
+            user_query=user_query,
+            max_index=max_index,
         )
 
         messages: list[VLMMessage] = [VLMMessage(role="user", content=prompt_text)]
@@ -229,8 +233,8 @@ class RetrievalService:
         scores = {}
 
         for line in content.strip().splitlines():
-            match = re.match(r"^\s*(\d+)\s*-\s*(\d+(?:\.\d+)?)\s*$", line)
-
+            match = re.match(r"^\s*(\d+)\s*:\s*(\d+(?:\.\d+)?)\s*$", line)
+            
             if not match:
                 continue
 

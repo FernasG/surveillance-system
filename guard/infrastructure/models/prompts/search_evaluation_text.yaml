@@ -1,15 +1,16 @@
 description: "Evaluates how well video frame descriptions match a user query."
-version: "2.0"
+version: "3.0"
 template: |
   Compare the following frame descriptions to the user query: '{user_query}'
 
   Descriptions:
   {formatted_descriptions}
 
-  Rate how well each description matches the query from 0 to 10.
-  Output ONLY the index and the score separated by a hyphen, one per line. Do not write any other text.
+  Rate how well each description matches the query on a scale from 0 (no match) to 10 (perfect match).
+  Output exactly {num_descriptions} lines, one per description, covering every index from 0 to {max_index}.
+  Each line must be the description index, a colon, and the score. Do not write any other text.
 
-  Example format:
-  0-10
-  1-5
-  2-0
+  Example format for three descriptions:
+  0: 8
+  1: 2
+  2: 5

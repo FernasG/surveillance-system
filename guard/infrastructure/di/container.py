@@ -35,7 +35,7 @@ class ApplicationContainer:
         database = SqliteDatabase()
         auth_repo = SqliteAuthStore(database)
         self.auth_service = AuthService(auth_repo)
-        await self.auth_service.initialize_admin()
+        await self.auth_service.initialize_admin(self.settings.admin_password)
 
         analytics_repo = SqliteAnalyticsStore(database)
         self.analytics_service = AnalyticsService(analytics_repo)

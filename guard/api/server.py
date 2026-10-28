@@ -16,11 +16,13 @@ IS_PRODUCTION = settings.env == "production"
 
 setup_logging(json_format=IS_PRODUCTION)
 
+CORS_ORIGINS = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+
 app = FastAPI(title="Pi Guard", lifespan=app_lifespan)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

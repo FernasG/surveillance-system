@@ -7,6 +7,8 @@ services:
     command: ["uvicorn", "guard.api.server:app", "--reload", "--host", "0.0.0.0", "--port", "3000"]
     volumes:
       - ./guard:/app/guard
+    ports:
+      - 3000:3000
 
   guard-worker:
     volumes:

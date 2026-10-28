@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str
     live_stream_url: Optional[str] = None
+    admin_password: Optional[str] = None
+    cors_origins: str = ""
 
     class Config:
         env_file = ".env"

@@ -1,0 +1,33 @@
+# Development overrides: hot reload for the guard code and infrastructure
+# ports published on the network for local tests.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  pi-guard:
+    command: ["uvicorn", "guard.api.server:app", "--reload", "--host", "0.0.0.0", "--port", "3000"]
+    volumes:
+      - ./guard:/app/guard
+
+  guard-worker:
+    volumes:
+      - ./guard:/app/guard
+
+  guard-enrichment-worker:
+    volumes:
+      - ./guard:/app/guard
+
+  clip-api:
+    ports:
+      - 8083:8083
+
+  qwen-api:
+    ports:
+      - 8081:8081
+
+  chromadb:
+    ports:
+      - 8000:8000
+
+  redis:
+    ports:
+      - 6379:6379

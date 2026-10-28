@@ -6,6 +6,7 @@
   --spec-type draft-mtp \
   --spec-draft-n-max 3 --spec-draft-n-min 0 \
   -c 4096 \
+  --cache-ram 0 \
   -t 3 \
   --parallel 1 \
   --cpu-strict-batch 1 \

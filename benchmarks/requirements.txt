@@ -1,0 +1,6 @@
+requests>=2.32.0,<3.0.0
+redis>=5.0.0
+
+# visualize_academic.py
+matplotlib>=3.9
+pandas>=2.2

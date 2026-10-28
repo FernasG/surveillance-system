@@ -234,3 +234,6 @@ ollama/
 
 # Models
 *.gguf
+# Benchmark outputs
+results/
+.venv-bench/

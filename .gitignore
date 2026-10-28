@@ -228,6 +228,9 @@ videos/*.mkv
 # Database Folders
 chroma_data/
 redis_data/
+caddy_data/
+caddy_config/
+caddy-root.crt
 data/
 
 # Gemma Storage

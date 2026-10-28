@@ -11,6 +11,8 @@ services:
       dockerfile: guard/Dockerfile
     container_name: pi-guard
     restart: unless-stopped
+    # Reachable only through caddy, which serves it under /api over HTTPS.
+    command: ["uvicorn", "guard.api.server:app", "--host", "0.0.0.0", "--port", "3000", "--root-path", "/api", "--proxy-headers", "--forwarded-allow-ips", "*"]
     env_file:
       - .env
     environment:
@@ -22,12 +24,35 @@ services:
     volumes:
       - ./videos:/app/videos
       - ./data:/app/data
-    ports:
-      - 3000:3000
     depends_on:
-      - chromadb
-      - clip-api
-      - qwen-api
+      chromadb:
+        condition: service_healthy
+      clip-api:
+        condition: service_started
+      qwen-api:
+        condition: service_started
+    networks:
+      - guard-network
+
+  caddy:
+    image: caddy:2.11.7-alpine
+    container_name: caddy
+    restart: unless-stopped
+    environment:
+      - SITE_ADDRESS=${SITE_ADDRESS:?}
+      - DEFAULT_SNI=${DEFAULT_SNI:-localhost}
+      - MANAGER_UPSTREAM=${MANAGER_UPSTREAM:-host.docker.internal:5173}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy_data:/data
+      - ./caddy_config:/config
+    ports:
+      - 80:80
+      - 443:443
+    depends_on:
+      - pi-guard
     networks:
       - guard-network
 
@@ -153,6 +178,13 @@ services:
     restart: unless-stopped
     volumes:
       - ./chroma_data:/chroma/chroma
+    # The image has no curl/wget; probe the heartbeat endpoint with bash's /dev/tcp.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '200 OK' <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     networks:
       - guard-network
 

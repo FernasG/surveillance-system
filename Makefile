@@ -29,3 +29,6 @@ sh\:watcher:
 
 sh\:ml:
 	docker compose exec ml-server bash
+
+ca-cert:
+	docker compose cp caddy:/data/caddy/pki/authorities/local/root.crt caddy-root.crt

@@ -1,23 +1,31 @@
+from typing import Optional
 from fastapi import HTTPException, status
 from guard.core.entities import User
 from guard.core.interfaces import IAuthRepository
 from guard.infrastructure.security import verify_password, get_password_hash, create_access_token
 
+MIN_ADMIN_PASSWORD_LENGTH = 8
+
 class AuthService:
     def __init__(self, auth_repo: IAuthRepository):
         self.repo = auth_repo
 
-    async def initialize_admin(self) -> None:
-        admin_exists = await self.repo.get_user("admin")
+    async def initialize_admin(self, admin_password: Optional[str]) -> None:
+        if not admin_password or admin_password == "admin" or len(admin_password) < MIN_ADMIN_PASSWORD_LENGTH:
+            raise ValueError(f"ADMIN_PASSWORD must be set to at least {MIN_ADMIN_PASSWORD_LENGTH} characters and must not be 'admin'")
 
-        if not admin_exists:
-            admin_user = User(
-                username="admin",
-                hashed_password=get_password_hash("admin"),
-                is_admin=True
-            )
+        admin_user = await self.repo.get_user("admin")
 
-            await self.repo.save_user(admin_user)
+        if admin_user and verify_password(admin_password, admin_user.hashed_password):
+            return
+
+        admin_user = User(
+            username="admin",
+            hashed_password=get_password_hash(admin_password),
+            is_admin=True
+        )
+
+        await self.repo.save_user(admin_user)
 
     async def authenticate_user(self, username: str, password: str) -> str:
         user = await self.repo.get_user(username)

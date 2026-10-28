@@ -1,0 +1,28 @@
+# Single HTTPS entry point on the local network. Certificates are issued by
+# Caddy's own local CA (no internet needed); install its root certificate on
+# each client once (make ca-cert).
+{
+	skip_install_trust
+	# Clients connecting by IP send no SNI; this picks the certificate for them.
+	default_sni {$DEFAULT_SNI:localhost}
+}
+
+{$SITE_ADDRESS} {
+	tls internal
+
+	# Pi Guard API, served under /api (uvicorn runs with --root-path /api).
+	handle_path /api/* {
+		reverse_proxy pi-guard:3000 {
+			# Flush immediately so the MJPEG live stream is not buffered.
+			flush_interval -1
+		}
+	}
+
+	# Surveillance Manager frontend.
+	handle {
+		reverse_proxy {$MANAGER_UPSTREAM} {
+			# The Vite dev server only accepts localhost/IP Host headers.
+			header_up Host localhost
+		}
+	}
+}

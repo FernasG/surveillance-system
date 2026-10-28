@@ -3,7 +3,8 @@ __pycache__
 .env
 .git
 .gitignore
-.venvvideos
+.venv
+videos
 data
 chroma_data
 redis_data

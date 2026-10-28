@@ -1,3 +1,5 @@
+COMPOSE_DEV = docker compose -f docker-compose.yml -f docker-compose.dev.yml
+
 build:
 	docker compose build
 
@@ -6,6 +8,12 @@ up:
 
 up-build:
 	docker compose up --build
+
+dev:
+	$(COMPOSE_DEV) up
+
+dev-build:
+	$(COMPOSE_DEV) up --build
 
 down:
 	docker compose down

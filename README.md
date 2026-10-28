@@ -97,6 +97,8 @@ The codebase follows a clean-architecture split: `core` has no dependency on `in
 
    This brings up, in dependency order: `redis`, `chromadb`, `clip-api`, the `llama.cpp`-based model servers (downloading GGUF weights on first run via `llama-downloader`), the `watcher`, both `guard` workers, and the `pi-guard` API.
 
+   This is the production setup: only the `pi-guard` API (port 3000) is published, and every other service is reachable only inside the Docker network. For development, use `make dev-build` instead, which layers `docker-compose.dev.yml` on top to enable hot reload of `guard/` and publish Redis (6379), ChromaDB (8000), `qwen-api` (8081) and `clip-api` (8083) on the network.
+
 5. **Check it's alive:**
 
    ```bash
@@ -113,6 +115,8 @@ The codebase follows a clean-architecture split: `core` has no dependency on `in
 make build       # docker compose build
 make up          # docker compose up
 make up-build    # docker compose up --build
+make dev         # same as up, with docker-compose.dev.yml (hot reload, open ports)
+make dev-build   # same as up-build, with docker-compose.dev.yml
 make down        # docker compose down
 make logs        # follow logs from all services
 make sh:guard    # shell into the pi-guard API container

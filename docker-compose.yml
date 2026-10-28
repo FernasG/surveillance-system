@@ -10,15 +10,14 @@ services:
       context: .
       dockerfile: guard/Dockerfile
     container_name: pi-guard
+    restart: unless-stopped
     env_file:
       - .env
     environment:
       - TZ=America/Sao_Paulo
     volumes:
-      - ./guard:/app/guard
       - ./videos:/app/videos
       - ./data:/app/data
-      - ./.env:/app/.env
     ports:
       - 3000:3000
     depends_on:
@@ -36,16 +35,15 @@ services:
       context: .
       dockerfile: guard/Dockerfile
     container_name: guard-worker
+    restart: unless-stopped
     command: ["python", "-m", "guard.worker.main"]
     env_file:
       - .env
     environment:
       - TZ=America/Sao_Paulo
     volumes:
-      - ./guard:/app/guard
       - ./videos:/app/videos
       - ./data:/app/data
-      - ./.env:/app/.env
     depends_on:
       - chromadb
       - redis
@@ -60,16 +58,15 @@ services:
       context: .
       dockerfile: guard/Dockerfile
     container_name: guard-enrichment-worker
+    restart: unless-stopped
     command: ["python", "-m", "guard.worker.enrichment_main"]
     env_file:
       - .env
     environment:
       - TZ=America/Sao_Paulo
     volumes:
-      - ./guard:/app/guard
       - ./videos:/app/videos
       - ./data:/app/data
-      - ./.env:/app/.env
     depends_on:
       - chromadb
       - redis
@@ -83,10 +80,9 @@ services:
       dockerfile: Dockerfile
     image: clip-api:latest
     container_name: clip-api
+    restart: unless-stopped
     environment:
       - CLIP_MODEL=ViT-B/32
-    ports:
-      - "8083:8083"
     networks:
       - guard-network
 
@@ -96,20 +92,20 @@ services:
       context: ./watcher
       dockerfile: Dockerfile
     container_name: watcher
+    restart: unless-stopped
     env_file:
       - .env
     environment:
       - TZ=America/Sao_Paulo
     volumes:
       - ./videos:/app/videos
-      - ./.env:/app/.env
     depends_on:
       - redis
     networks:
       - guard-network
 
   llama-downloader:
-    image: alpine:latest
+    image: alpine:3.24.2
     container_name: llama-downloader
     volumes:
       - ./llama.cpp/models:/models
@@ -124,8 +120,7 @@ services:
       dockerfile: Dockerfile
     image: custom-llama-cpp:latest
     container_name: qwen-api
-    ports:
-      - "8081:8081"
+    restart: unless-stopped
     volumes:
       - ./llama.cpp/models:/models
       - ./llama.cpp/scripts:/scripts
@@ -137,10 +132,8 @@ services:
       - guard-network
 
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:1.5.5
     container_name: chromadb
-    ports:
-      - 8000:8000
     restart: unless-stopped
     volumes:
       - ./chroma_data:/chroma/chroma
@@ -148,10 +141,11 @@ services:
       - guard-network
 
   redis:
-    image: redis:alpine
-    restart: always
+    image: redis:8.10.2-alpine
     container_name: redis
-    ports:
-      - 6379:6379
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - ./redis_data:/data
     networks:
       - guard-network

@@ -23,4 +23,4 @@ COPY guard/ ./guard/
 
 EXPOSE 3000
 
-CMD ["uvicorn", "guard.api.server:app", "--reload", "--host", "0.0.0.0", "--port", "3000"]
+CMD ["uvicorn", "guard.api.server:app", "--host", "0.0.0.0", "--port", "3000"]

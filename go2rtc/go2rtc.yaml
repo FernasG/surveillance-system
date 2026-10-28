@@ -1,0 +1,29 @@
+# go2rtc runs on the Raspberry Pi host (see install.sh) and is the only process
+# that opens the camera. It republishes each stream over RTSP for the recorder
+# and the Pi Guard live view. Variables are read from the project's .env.
+
+streams:
+  # Camera Module 3 (CSI). The Pi 5 has no hardware H.264 encoder, so
+  # rpicam-vid encodes in software through libav.
+  cam1: exec:rpicam-vid -t 0 -n --width 1280 --height 720 --framerate 30 --intra 30 --inline --libav-format h264 -o -
+  # IP cameras can be added as plain RTSP sources, e.g.:
+  # cam2: rtsp://user:password@192.168.1.50:554/stream1
+
+api:
+  # Web UI and HTTP API only on localhost in production.
+  listen: "127.0.0.1:1984"
+  username: ${RTSP_USER}
+  password: ${RTSP_PASSWORD}
+
+rtsp:
+  # Reachable by the containers through host.docker.internal, so it listens on
+  # all interfaces and always requires credentials.
+  listen: ":${RTSP_PORT:8554}"
+  username: ${RTSP_USER}
+  password: ${RTSP_PASSWORD}
+
+webrtc:
+  listen: ""
+
+exec:
+  allow_paths: [rpicam-vid]

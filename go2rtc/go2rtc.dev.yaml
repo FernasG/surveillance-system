@@ -1,0 +1,5 @@
+# Development overrides, loaded after go2rtc.yaml: exposes the web UI on the
+# network (still behind RTSP_USER/RTSP_PASSWORD) for testing from another machine.
+
+api:
+  listen: ":1984"

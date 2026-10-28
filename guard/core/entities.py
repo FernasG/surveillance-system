@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: float
     secret_key: str
     algorithm: str
+    live_stream_url: Optional[str] = None
 
     class Config:
         env_file = ".env"

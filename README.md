@@ -36,7 +36,7 @@ A FastAPI service exposes authentication, video listing/playback/thumbnails, liv
 | Vector store              | ChromaDB                                         |
 | Relational store          | SQLite (WAL mode, shared across API/workers)     |
 | Messaging / queues        | Redis                                            |
-| Segment recording         | `ffmpeg` (V4L2 capture) + `watchdog`             |
+| Camera / segment recording| `go2rtc` (RTSP) + `ffmpeg` recorder + `watchdog` |
 | Auth                      | JWT (PyJWT) + bcrypt                             |
 
 ---
@@ -63,7 +63,7 @@ The codebase follows a clean-architecture split: `core` has no dependency on `in
 ## Prerequisites
 
 - Docker and Docker Compose
-- A USB camera exposed at `/dev/video0` (for live streaming and recording)
+- A Raspberry Pi camera with `rpicam-apps` installed on the host (or any RTSP camera added to `go2rtc/go2rtc.yaml`)
 - Enough disk space for recorded segments and downloaded GGUF model weights (several GB)
 - A GPU is optional but recommended for the `llama.cpp` and CLIP/YOLO services if you want faster inference
 
@@ -81,13 +81,14 @@ The codebase follows a clean-architecture split: `core` has no dependency on `in
 
 2. **Fill in `.env`.** See [Configuration](#configuration) below for what each variable does.
 
-3. **Start the recording pipeline.** Segments are produced by `script.sh`, which captures from `/dev/video0` with `ffmpeg` and writes 15-second `.mp4` fragments into `videos/`:
+3. **Install go2rtc on the Pi host.** [go2rtc](https://github.com/AlexxIT/go2rtc) is the only process that opens the camera: it runs `rpicam-vid` and republishes the stream over RTSP (authenticated with `RTSP_USER`/`RTSP_PASSWORD`). The `recorder` container reads that stream and writes one-hour `.mp4` segments into `videos/`, and the API's live view reads it too.
 
    ```bash
-   ./script.sh
+   ./go2rtc/install.sh        # production: web UI only on localhost
+   ./go2rtc/install.sh --dev  # development: web UI on the network (port 1984)
    ```
 
-   (Run this on the host, or adapt it into your own capture setup — anything that writes finished `.mp4` segments into `videos/` will work, since the `watcher` service picks them up from there.)
+   This installs go2rtc as the `go2rtc` systemd service, reading the variables from this project's `.env`. IP cameras can be added as extra RTSP sources in `go2rtc/go2rtc.yaml` and listed in `RECORD_CAMERAS`.
 
 4. **Build and start everything else:**
 
@@ -142,6 +143,11 @@ All configuration is read from `.env` (see `.env.example` for the full list of k
 | `IMAGE_MODEL` / `IMAGE_SERVER_URL` | Model name/URL used by Stage 2 for event captioning |
 | `SECRET_KEY` / `ALGORITHM` | JWT signing configuration — set `SECRET_KEY` to a long random value |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT access token lifetime |
+| `RTSP_USER` / `RTSP_PASSWORD` | Credentials of the go2rtc RTSP server and web UI (required) |
+| `RTSP_PORT` | go2rtc RTSP port (default `8554`) |
+| `LIVE_CAMERA` | go2rtc stream served by the API's live view (default `cam1`) |
+| `RECORD_CAMERAS` | Space-separated go2rtc streams to record (default `cam1`); names must not contain `_` |
+| `RECORD_SEGMENT_SECONDS` | Length of each recorded segment (default `3600`) |
 
 The `llama.cpp`-based model servers (`gemma-api`, `liquid-api`, and the disabled-by-default `qwen-api`) are configured directly in `docker-compose.yml` and `llama.cpp/scripts/`; swap the `start_*.sh` script referenced by a service's `entrypoint` to change which model it serves, and add the corresponding download step to `llama.cpp/scripts/download_models.sh`.
 

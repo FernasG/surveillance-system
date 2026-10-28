@@ -5,17 +5,22 @@ from datetime import date
 
 from guard.api.routers.auth_router import get_current_user_token_data
 from guard.core.interfaces import CameraDriver
-from guard.core.entities import VideoItem, VideoListResponse
+from guard.core.entities import Settings, VideoItem, VideoListResponse
 from guard.core.services.video_service import VideoService
-from guard.infrastructure.drivers.usb_camera_driver import LogitechUSBDriver
+from guard.infrastructure.drivers.rtsp_camera_driver import RTSPCameraDriver
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
+
+settings = Settings()
 
 def get_video_service() -> VideoService:
     return VideoService()
 
 def get_camera_driver() -> CameraDriver:
-    return LogitechUSBDriver(device_path="/dev/video0")
+    if not settings.live_stream_url:
+        raise HTTPException(status_code=503, detail="Live stream is not configured")
+
+    return RTSPCameraDriver(stream_url=settings.live_stream_url)
 
 @router.get("/", response_model=VideoListResponse, dependencies=[Depends(get_current_user_token_data)])
 async def list_videos(

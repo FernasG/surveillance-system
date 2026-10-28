@@ -3,4 +3,13 @@ __pycache__
 .env
 .git
 .gitignore
-.venv
+.venvvideos
+data
+chroma_data
+redis_data
+results
+benchmarks
+llama.cpp/models
+*.mp4
+*.mkv
+*.gguf

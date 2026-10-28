@@ -33,9 +33,6 @@ services:
 
   guard-worker:
     image: pi-guard:latest
-    build:
-      context: .
-      dockerfile: guard/Dockerfile
     container_name: guard-worker
     restart: unless-stopped
     command: ["python", "-m", "guard.worker.main"]
@@ -56,9 +53,6 @@ services:
 
   guard-enrichment-worker:
     image: pi-guard:latest
-    build:
-      context: .
-      dockerfile: guard/Dockerfile
     container_name: guard-enrichment-worker
     restart: unless-stopped
     command: ["python", "-m", "guard.worker.enrichment_main"]

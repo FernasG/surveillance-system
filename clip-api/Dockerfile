@@ -13,7 +13,12 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt /app/
 
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt \
+# Install CPU-only torch first: the default PyPI aarch64 wheels bundle ~3.5GB
+# of CUDA/triton libraries that are useless on the Pi.
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu \
+        $(grep -E '^(torch|torchvision)==' requirements.txt) \
+    && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir git+https://github.com/openai/CLIP.git
 
 COPY . /app/
